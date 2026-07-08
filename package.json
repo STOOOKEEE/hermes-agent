@@ -1,0 +1,16 @@
+{
+  "name": "hermes-agent-x-browser-use",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser Use branché sur l'agent de trading XRPL : récupère le sentiment et les news XRP pour nourrir les décisions de l'agent.",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "browser-use-sdk": "^3.8.4"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.0"
+  }
+}
