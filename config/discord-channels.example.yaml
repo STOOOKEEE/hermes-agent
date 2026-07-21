@@ -6,6 +6,13 @@ discord:
   group_sessions_per_user: true
 
   channels:
+    - name: general
+      channel_id: "REPLACE_WITH_GENERAL_CHANNEL_ID"
+      profile: default
+      description: "Conversation générale avec le profil Hermes principal."
+      respond_without_mention: true
+      use_threads: false
+
     - name: twitter
       channel_id: "REPLACE_WITH_TWITTER_CHANNEL_ID"
       profile: twitter

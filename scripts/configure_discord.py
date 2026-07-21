@@ -23,6 +23,7 @@ import yaml
 
 MANAGED_ROUTE_PREFIX = "discord-channel/"
 PLACEHOLDER_PREFIX = "REPLACE_WITH_"
+DEFAULT_PROFILE = "default"
 SNOWFLAKE_RE = re.compile(r"^[0-9]{15,22}$")
 PROFILE_RE = re.compile(r"^[a-z][a-z0-9]{1,31}$")
 TOOLSET_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
@@ -116,7 +117,7 @@ def validate_manifest(
         seen_profiles.add(profile)
 
         soul_path = repo_root / "profiles" / profile / "SOUL.md"
-        if profile and not soul_path.is_file():
+        if profile and profile != DEFAULT_PROFILE and not soul_path.is_file():
             errors.append(f"mission absente pour le profil {profile} : {soul_path}")
 
         description = str(channel.get("description") or "").strip()
@@ -226,6 +227,7 @@ def render_config(
             "profile": channel["profile"],
         }
         for channel in channels
+        if channel["profile"] != DEFAULT_PROFILE
     ]
     routes = preserved_routes + managed_routes
     gateway["profile_routes"] = routes
@@ -577,6 +579,10 @@ def _create_or_update_profiles(
 
     for channel in channels:
         profile = channel["profile"]
+        if profile == DEFAULT_PROFILE:
+            # Un salon sans route explicite appartient au home principal et à la
+            # session agent:main. Il n'existe pas de dossier profiles/default.
+            continue
         target = profiles_root / profile
         if not target.exists():
             subprocess.run(

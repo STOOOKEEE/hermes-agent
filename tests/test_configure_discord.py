@@ -97,6 +97,59 @@ class ConfigureDiscordTests(unittest.TestCase):
         with self.assertRaisesRegex(ConfigurationError, "dupliqué"):
             validate_manifest(self.manifest, self.repo)
 
+    def test_default_channel_uses_main_without_profile_route_or_soul(self) -> None:
+        general = {
+            "name": "general",
+            "channel_id": "423456789012345678",
+            "profile": "default",
+            "description": "Hermes principal.",
+            "respond_without_mention": True,
+            "use_threads": False,
+        }
+        self.manifest["discord"]["channels"].insert(0, general)
+
+        channels = validate_manifest(self.manifest, self.repo)
+        rendered = render_config({}, self.manifest, channels)
+
+        self.assertEqual(
+            ["discord-channel/twitter", "discord-channel/crypto"],
+            [route["name"] for route in rendered["gateway"]["profile_routes"]],
+        )
+        self.assertEqual(
+            [
+                "423456789012345678",
+                "223456789012345678",
+                "323456789012345678",
+            ],
+            rendered["discord"]["allowed_channels"],
+        )
+        self.assertIn(
+            "423456789012345678", rendered["discord"]["free_response_channels"]
+        )
+
+    @patch("scripts.configure_discord.subprocess.run")
+    def test_default_channel_does_not_create_a_profile(self, run) -> None:
+        channels = [
+            {
+                "name": "general",
+                "channel_id": "423456789012345678",
+                "profile": "default",
+                "description": "Hermes principal.",
+                "respond_without_mention": True,
+                "use_threads": False,
+                "toolsets": None,
+            }
+        ]
+        _create_or_update_profiles(
+            channels=channels,
+            repo_root=self.repo,
+            hermes_home=self.repo / "hermes-home",
+            hermes_bin="hermes-test",
+            timestamp="20260101T000000Z",
+        )
+        run.assert_not_called()
+        self.assertFalse((self.repo / "hermes-home" / "profiles" / "default").exists())
+
     def test_render_replaces_managed_routes_and_preserves_others(self) -> None:
         existing = {
             "model": {"provider": "example"},

@@ -11,6 +11,7 @@ Configuration initiale prévue :
 
 | Salon | Profil Hermes | Mission |
 |---|---|---|
+| `#général` | `default` | Conversation générale avec le profil Hermes principal |
 | `#twitter` | `twitter` | Veille avec Agent Reach, rédaction et publication contrôlée via XActions |
 | `#crypto` | `crypto` | Surveillance en lecture seule de portefeuilles crypto |
 
@@ -271,6 +272,10 @@ Cette coupure est volontairement manuelle : le script ne supprime jamais un cred
 Les threads héritent automatiquement du profil de leur salon parent. Les salons
 configurés avec `respond_without_mention: true` répondent sans `@Hermes` et restent en
 mode conversation directe.
+
+Le nom de profil spécial `default` autorise un salon sans créer de route multiplexée :
+Hermes utilise alors son home principal et la session `agent:main`. Il convient au
+salon général, tandis que les missions isolées gardent un profil dédié.
 
 ## Tests
 
