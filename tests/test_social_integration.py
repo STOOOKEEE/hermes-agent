@@ -219,11 +219,24 @@ class AgentReachReaderTests(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_gateway_hook_stamps_missing_multiplex_profile(self) -> None:
-        source = SimpleNamespace(profile=None)
-        event = SimpleNamespace(source=source)
+        source = SimpleNamespace(
+            profile=None,
+            guild_id=None,
+            parent_chat_id=None,
+        )
+        event = SimpleNamespace(
+            source=source,
+            raw_message=SimpleNamespace(
+                guild_id=1529036355739455559,
+                channel=SimpleNamespace(parent_id=1529000000000000000),
+            ),
+        )
         gateway = SimpleNamespace(
             _profile_name_for_source=lambda candidate: (
-                "twitter" if candidate is source else None
+                "twitter"
+                if candidate is source
+                and candidate.guild_id == "1529036355739455559"
+                else None
             )
         )
 
@@ -233,9 +246,10 @@ class AgentReachReaderTests(unittest.TestCase):
 
         self.assertIsNone(result)
         self.assertEqual("twitter", source.profile)
+        self.assertEqual("1529000000000000000", source.parent_chat_id)
 
     def test_gateway_hook_preserves_existing_profile(self) -> None:
-        source = SimpleNamespace(profile="crypto")
+        source = SimpleNamespace(profile="crypto", guild_id=None, parent_chat_id=None)
         event = SimpleNamespace(source=source)
         gateway = SimpleNamespace(_profile_name_for_source=lambda _: "twitter")
 

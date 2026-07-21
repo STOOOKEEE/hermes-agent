@@ -458,6 +458,16 @@ def _stamp_multiplex_profile_route(
     source = getattr(event, "source", None)
     if source is None or getattr(source, "profile", None):
         return None
+    raw_event = getattr(event, "raw_message", None)
+    if not getattr(source, "guild_id", None):
+        guild_id = getattr(raw_event, "guild_id", None)
+        if guild_id is not None:
+            source.guild_id = str(guild_id)
+    if not getattr(source, "parent_chat_id", None):
+        channel = getattr(raw_event, "channel", None)
+        parent_id = getattr(channel, "parent_id", None)
+        if parent_id is not None:
+            source.parent_chat_id = str(parent_id)
     resolver = getattr(gateway, "_profile_name_for_source", None)
     if not callable(resolver):
         return None
