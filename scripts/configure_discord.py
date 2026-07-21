@@ -438,6 +438,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--apply", action="store_true", help="écrire et créer les profils")
     parser.add_argument(
+        "--profiles-only",
+        action="store_true",
+        help="déployer seulement les profils et plugins, sans modifier le gateway",
+    )
+    parser.add_argument(
         "--restart",
         action="store_true",
         help="redémarrer le gateway après application",
@@ -450,6 +455,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.restart and not args.apply:
         print("Erreur : --restart nécessite --apply", file=sys.stderr)
         return 2
+    if args.restart and args.profiles_only:
+        print("Erreur : --restart est incompatible avec --profiles-only", file=sys.stderr)
+        return 2
 
     repo_root = Path(__file__).resolve().parents[1]
     manifest_path = args.manifest.expanduser().resolve()
@@ -460,7 +468,7 @@ def main(argv: list[str] | None = None) -> int:
         channels = validate_manifest(
             manifest,
             repo_root,
-            allow_placeholders=args.check_template,
+            allow_placeholders=args.check_template or args.profiles_only,
         )
     except ConfigurationError as exc:
         print(f"Configuration invalide : {exc}", file=sys.stderr)
@@ -468,6 +476,26 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check or args.check_template:
         print(f"Configuration valide : {len(channels)} salon(s), {len(channels)} profil(s)")
+        return 0
+
+    if args.profiles_only:
+        print("Plan des profils :")
+        for channel in channels:
+            print(f"- {channel['profile']} · {channel['description']}")
+        if not args.apply:
+            print("Aucun fichier modifié. Relancer avec --apply après vérification.")
+            return 0
+        try:
+            _create_or_update_profiles(
+                channels=channels,
+                repo_root=repo_root,
+                hermes_home=hermes_home,
+                hermes_bin=args.hermes_bin,
+                timestamp=_timestamp(),
+            )
+        except (ConfigurationError, OSError, subprocess.CalledProcessError) as exc:
+            print(f"Échec de l’application : {exc}", file=sys.stderr)
+            return 1
         return 0
 
     config_path = hermes_home / "config.yaml"

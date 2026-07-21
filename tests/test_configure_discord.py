@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import yaml
+
 from scripts.configure_discord import (
     ConfigurationError,
     _create_or_update_profiles,
@@ -15,6 +17,8 @@ from scripts.configure_discord import (
     render_config,
     validate_manifest,
 )
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 class ConfigureDiscordTests(unittest.TestCase):
@@ -209,7 +213,7 @@ class ConfigureDiscordTests(unittest.TestCase):
 
         deployed = target / "plugins" / "publisher"
         self.assertTrue((deployed / "plugin.yaml").is_file())
-        rendered = __import__("yaml").safe_load(
+        rendered = yaml.safe_load(
             (target / "config.yaml").read_text(encoding="utf-8")
         )
         self.assertEqual(["existing", "publisher"], rendered["plugins"]["enabled"])
@@ -217,6 +221,25 @@ class ConfigureDiscordTests(unittest.TestCase):
     def test_plugin_config_rejects_malformed_enabled_list(self) -> None:
         with self.assertRaises(ConfigurationError):
             _enable_profile_plugins({"plugins": {"enabled": "publisher"}}, ["publisher"])
+
+    @patch("scripts.configure_discord._create_or_update_profiles")
+    def test_profiles_only_accepts_template_without_writing_gateway(self, deploy) -> None:
+        from scripts.configure_discord import main
+
+        original = REPO_ROOT / "config" / "discord-channels.example.yaml"
+        result = main(
+            [
+                "--manifest",
+                str(original),
+                "--hermes-home",
+                str(self.repo / "hermes-home"),
+                "--profiles-only",
+                "--apply",
+            ]
+        )
+        self.assertEqual(0, result)
+        deploy.assert_called_once()
+        self.assertFalse((self.repo / "hermes-home" / "config.yaml").exists())
 
 
 if __name__ == "__main__":

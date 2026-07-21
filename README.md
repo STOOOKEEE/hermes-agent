@@ -67,6 +67,22 @@ Il crée un environnement Python privé dans
 publique `twitter` est une façade en lecture seule ; les commandes `post`, `reply`,
 `like`, `follow`, etc. sont refusées.
 
+Le profil et son plugin peuvent être déployés avant même de connaître les identifiants
+Discord, sans toucher au gateway :
+
+```bash
+python3 scripts/configure_discord.py \
+  --manifest config/discord-channels.example.yaml \
+  --hermes-home ~/.hermes \
+  --profiles-only
+
+python3 scripts/configure_discord.py \
+  --manifest config/discord-channels.example.yaml \
+  --hermes-home ~/.hermes \
+  --profiles-only \
+  --apply
+```
+
 ### Configurer X sans transmettre de cookie au bot
 
 Se connecter en SSH au serveur, puis saisir les cookies directement dans ce terminal
