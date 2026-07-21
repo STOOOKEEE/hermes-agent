@@ -287,6 +287,11 @@ class TwitterReadonlyTests(unittest.TestCase):
         with patch.object(wrapper, "_reexec_in_private_venv"):
             self.assertEqual(77, wrapper.main(["post", "interdit"]))
 
+    def test_compact_global_flag_preserves_read_only_command_detection(self) -> None:
+        wrapper = _load_module("twitter_readonly_compact_test", WRAPPER_PATH)
+        self.assertEqual("status", wrapper._command(["--compact", "status", "--json"]))
+        self.assertEqual("search", wrapper._command(["-c", "search", "Hermes"]))
+
     def test_version_manifest_is_pinned(self) -> None:
         versions = yaml.safe_load(
             (REPO_ROOT / "integrations" / "versions.yaml").read_text(encoding="utf-8")

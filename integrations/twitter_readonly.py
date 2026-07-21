@@ -34,7 +34,7 @@ READ_ONLY_COMMANDS = {
     "user",
     "user-posts",
 }
-GLOBAL_FLAGS = {"-v", "--verbose"}
+GLOBAL_FLAGS = {"-v", "--verbose", "-c", "--compact"}
 INFORMATION_FLAGS = {"-h", "--help", "--version"}
 
 
