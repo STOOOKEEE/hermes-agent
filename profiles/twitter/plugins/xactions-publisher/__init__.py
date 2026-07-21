@@ -60,6 +60,26 @@ def _normalize_username(value: str) -> str:
     return value.strip().lstrip("@").lower()
 
 
+def _active_profile_is_twitter() -> bool:
+    """Le plugin est global au gateway, mais ne s'active que pour Twitter."""
+
+    try:
+        from hermes_constants import get_hermes_home
+
+        return Path(get_hermes_home()).name == "twitter"
+    except ImportError:
+        return os.getenv("HERMES_PROFILE", "").strip().lower() == "twitter"
+
+
+def _profile_secret(name: str) -> str:
+    try:
+        from agent.secret_scope import get_secret
+
+        return str(get_secret(name, "") or "")
+    except ImportError:
+        return os.getenv(name, "")
+
+
 def _validate_text(args: Any) -> str:
     if not isinstance(args, dict):
         raise ValueError("Les arguments doivent être un objet")
@@ -72,9 +92,9 @@ def _validate_text(args: Any) -> str:
 
 
 def _load_configuration() -> dict[str, str]:
-    expected_username = _normalize_username(
-        os.getenv("XACTIONS_EXPECTED_USERNAME", "")
-    )
+    if not _active_profile_is_twitter():
+        raise SocialConfigurationError("Publication X indisponible hors du profil twitter")
+    expected_username = _normalize_username(_profile_secret("XACTIONS_EXPECTED_USERNAME"))
     if not expected_username:
         raise SocialConfigurationError(
             "XACTIONS_EXPECTED_USERNAME manque dans le .env du profil twitter"
@@ -126,7 +146,12 @@ def _approval_hook(
         except ValueError as exc:
             return {"action": "block", "message": f"Publication X refusée : {exc}"}
 
-        username = _normalize_username(os.getenv("XACTIONS_EXPECTED_USERNAME", ""))
+        if not _active_profile_is_twitter():
+            return {
+                "action": "block",
+                "message": "Publication X refusée hors du profil twitter",
+            }
+        username = _normalize_username(_profile_secret("XACTIONS_EXPECTED_USERNAME"))
         account = f"@{username}" if username else "le compte X configuré"
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:20]
         return {

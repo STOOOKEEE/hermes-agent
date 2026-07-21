@@ -48,7 +48,13 @@ class XActionsPluginTests(unittest.TestCase):
 
     def test_approval_contains_exact_text_and_content_scoped_rule(self) -> None:
         text = "Un post précis 🚀"
-        with patch.dict(os.environ, {"XACTIONS_EXPECTED_USERNAME": "@stoookeee"}):
+        with patch.dict(
+            os.environ,
+            {
+                "XACTIONS_EXPECTED_USERNAME": "@stoookeee",
+                "HERMES_PROFILE": "twitter",
+            },
+        ):
             first = self.plugin._approval_hook(self.plugin.TOOL_NAME, {"text": text})
             second = self.plugin._approval_hook(
                 self.plugin.TOOL_NAME, {"text": text + " modifié"}
@@ -67,6 +73,14 @@ class XActionsPluginTests(unittest.TestCase):
         self.assertIsNone(
             self.plugin._approval_hook("terminal", {"command": "twitter search IA"})
         )
+
+    def test_publication_tool_is_blocked_outside_twitter_profile(self) -> None:
+        with patch.dict(os.environ, {"HERMES_PROFILE": "crypto"}, clear=False):
+            result = self.plugin._approval_hook(
+                self.plugin.TOOL_NAME, {"text": "Ne doit pas partir"}
+            )
+        self.assertEqual("block", result["action"])
+        self.assertIn("hors du profil twitter", result["message"])
 
     def test_handler_keeps_cookies_out_of_process_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -99,7 +113,13 @@ class XActionsPluginTests(unittest.TestCase):
                 patch.object(self.plugin, "X_ACTIONS_ROOT", xactions),
                 patch.object(self.plugin.shutil, "which", return_value="/usr/bin/node"),
                 patch.object(self.plugin.subprocess, "run", return_value=completed) as run,
-                patch.dict(os.environ, {"XACTIONS_EXPECTED_USERNAME": "stoookeee"}),
+                patch.dict(
+                    os.environ,
+                    {
+                        "XACTIONS_EXPECTED_USERNAME": "stoookeee",
+                        "HERMES_PROFILE": "twitter",
+                    },
+                ),
             ):
                 result = json.loads(self.plugin._handle_post({"text": "Bonjour"}))
 
@@ -176,6 +196,10 @@ class AgentReachReaderTests(unittest.TestCase):
         twitter.chmod(0o755)
         return config, twitter
 
+    def test_reader_is_unavailable_outside_twitter_profile(self) -> None:
+        with patch.dict(os.environ, {"HERMES_PROFILE": "crypto"}, clear=False):
+            self.assertFalse(self.plugin._check_available())
+
     def test_status_keeps_cookies_out_of_process_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             config, twitter = self._configured(Path(temporary))
@@ -190,7 +214,13 @@ class AgentReachReaderTests(unittest.TestCase):
                 patch.object(self.plugin, "X_CONFIG", config),
                 patch.object(self.plugin, "TWITTER", twitter),
                 patch.object(self.plugin.subprocess, "run", return_value=completed) as run,
-                patch.dict(os.environ, {"XACTIONS_EXPECTED_USERNAME": "STOOOKEEE"}),
+                patch.dict(
+                    os.environ,
+                    {
+                        "XACTIONS_EXPECTED_USERNAME": "STOOOKEEE",
+                        "HERMES_PROFILE": "twitter",
+                    },
+                ),
             ):
                 result = json.loads(self.plugin._handle_status({}))
 
@@ -216,7 +246,13 @@ class AgentReachReaderTests(unittest.TestCase):
                 patch.object(self.plugin, "X_CONFIG", config),
                 patch.object(self.plugin, "TWITTER", twitter),
                 patch.object(self.plugin.subprocess, "run", return_value=completed) as run,
-                patch.dict(os.environ, {"XACTIONS_EXPECTED_USERNAME": "STOOOKEEE"}),
+                patch.dict(
+                    os.environ,
+                    {
+                        "XACTIONS_EXPECTED_USERNAME": "STOOOKEEE",
+                        "HERMES_PROFILE": "twitter",
+                    },
+                ),
             ):
                 result = json.loads(
                     self.plugin._handle_search({"query": "Hermes", "max_results": 3})
@@ -244,7 +280,13 @@ class AgentReachReaderTests(unittest.TestCase):
                 patch.object(self.plugin, "X_CONFIG", config),
                 patch.object(self.plugin, "TWITTER", twitter),
                 patch.object(self.plugin.subprocess, "run", side_effect=[status, search]) as run,
-                patch.dict(os.environ, {"XACTIONS_EXPECTED_USERNAME": "STOOOKEEE"}),
+                patch.dict(
+                    os.environ,
+                    {
+                        "XACTIONS_EXPECTED_USERNAME": "STOOOKEEE",
+                        "HERMES_PROFILE": "twitter",
+                    },
+                ),
             ):
                 result = json.loads(
                     self.plugin._handle_search(

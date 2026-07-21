@@ -52,6 +52,9 @@ Twitter des outils structurés de statut, recherche, profil, posts, tweet et fil
 d’accueil. Le conteneur Docker de raisonnement ne reçoit ni les cookies ni un montage
 du dossier Agent Reach. Chaque lecture vérifie que la session correspond au compte X
 attendu avant d’interroger les données.
+En mode multiplexé, les plugins sont chargés par le processus gateway principal puis
+filtrés à chaque tour avec le profil actif et son coffre de secrets contextuel. Ils
+restent donc indisponibles dans le profil crypto.
 
 Les révisions auditées sont figées dans
 [`integrations/versions.yaml`](integrations/versions.yaml). XActions est exécuté
@@ -187,6 +190,8 @@ créée à côté du fichier concerné.
 Le même passage déploie les plugins présents dans `profiles/<profil>/plugins/` et les
 ajoute à l’allowlist `plugins.enabled` du profil concerné. Ainsi,
 `xactions-publisher` n’existe que dans le profil `twitter`, jamais dans `crypto`.
+Les sauvegardes de plugins sont conservées dans `backups/plugins/`, hors du dossier
+exécutable `plugins/`, afin que Hermes ne recharge jamais une ancienne version.
 Les variables `DISCORD_*` et `TELEGRAM_*` sont retirées des `.env` clonés : le gateway
 principal reste l’unique propriétaire des bots et route ensuite chaque salon vers son
 profil.

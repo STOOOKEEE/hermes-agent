@@ -3,6 +3,7 @@ version: 1.0.0
 description: "Lecture X structurée via l'installation Agent Reach, sans exposer les cookies au conteneur Hermes."
 author: STOOOKEEE
 kind: standalone
+multiplex_global: true
 provides_tools:
   - x_account_status
   - x_search_tweets

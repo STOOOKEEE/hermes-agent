@@ -347,6 +347,31 @@ def _profile_plugin_names(source_profile: Path) -> list[str]:
     )
 
 
+def _multiplex_runtime_plugins(
+    *, channels: list[dict[str, Any]], repo_root: Path
+) -> dict[str, Path]:
+    """Sélectionne les plugins à charger globalement dans un gateway multiplexé."""
+
+    selected: dict[str, Path] = {}
+    for channel in channels:
+        source_profile = repo_root / "profiles" / channel["profile"]
+        plugins_root = source_profile / "plugins"
+        if not plugins_root.is_dir():
+            continue
+        for name in _profile_plugin_names(source_profile):
+            source = plugins_root / name
+            manifest = _load_yaml(source / "plugin.yaml")
+            if manifest.get("multiplex_global") is not True:
+                continue
+            previous = selected.get(name)
+            if previous is not None and previous.resolve() != source.resolve():
+                raise ConfigurationError(
+                    f"Plugin multiplexé dupliqué entre profils : {name}"
+                )
+            selected[name] = source
+    return selected
+
+
 def _enable_profile_plugins(config: dict[str, Any], names: list[str]) -> dict[str, Any]:
     result = copy.deepcopy(config)
     plugins = result.setdefault("plugins", {})
@@ -363,6 +388,88 @@ def _enable_profile_plugins(config: dict[str, Any], names: list[str]) -> dict[st
     return result
 
 
+def _relocate_scannable_plugin_backups(target_plugins: Path) -> None:
+    """Sort les sauvegardes du dossier que le chargeur Hermes exécute."""
+
+    if not target_plugins.is_dir():
+        return
+    backup_root = target_plugins.parent / "backups" / "plugins"
+    for legacy in sorted(target_plugins.glob("*.bak.discord-*")):
+        if not legacy.is_dir():
+            continue
+        backup_root.mkdir(parents=True, exist_ok=True)
+        destination = backup_root / legacy.name
+        if destination.exists():
+            raise ConfigurationError(
+                f"Impossible de déplacer la sauvegarde de plugin : {destination} existe"
+            )
+        legacy.rename(destination)
+        print(f"Sauvegarde de plugin isolée : {destination}")
+
+
+def _plugin_backup_path(target_plugins: Path, name: str, timestamp: str) -> Path:
+    backup_root = target_plugins.parent / "backups" / "plugins"
+    backup_root.mkdir(parents=True, exist_ok=True)
+    return backup_root / f"{name}.bak.discord-{timestamp}"
+
+
+def _deploy_multiplex_runtime_plugins(
+    *,
+    channels: list[dict[str, Any]],
+    repo_root: Path,
+    hermes_home: Path,
+    timestamp: str,
+    update_config: bool,
+) -> list[str]:
+    """Déploie dans le home principal les plugins requis par le processus gateway."""
+
+    selected = _multiplex_runtime_plugins(channels=channels, repo_root=repo_root)
+    if not selected:
+        return []
+
+    target_plugins = hermes_home / "plugins"
+    target_plugins.mkdir(parents=True, exist_ok=True)
+    _relocate_scannable_plugin_backups(target_plugins)
+    for name, source in selected.items():
+        target = target_plugins / name
+        staging = target_plugins / f".{name}.discord.tmp"
+        if staging.exists():
+            shutil.rmtree(staging)
+        shutil.copytree(source, staging)
+
+        backup = _plugin_backup_path(target_plugins, name, timestamp)
+        moved_existing = False
+        try:
+            if target.exists():
+                if backup.exists():
+                    raise ConfigurationError(
+                        f"Sauvegarde de plugin gateway déjà présente : {backup}"
+                    )
+                target.rename(backup)
+                moved_existing = True
+                print(f"Sauvegarde : {backup}")
+            staging.rename(target)
+        except Exception:
+            if staging.exists():
+                shutil.rmtree(staging)
+            if moved_existing and backup.exists() and not target.exists():
+                backup.rename(target)
+            raise
+        print(f"Plugin gateway déployé : {target}")
+
+    names = sorted(selected)
+    if update_config:
+        config_path = hermes_home / "config.yaml"
+        current = _load_yaml(config_path) if config_path.exists() else {}
+        rendered = _enable_profile_plugins(current, names)
+        backup = _backup(config_path, timestamp)
+        if backup:
+            print(f"Sauvegarde : {backup}")
+        _write_yaml_atomic(config_path, rendered)
+        print(f"Plugins gateway activés dans : {config_path}")
+    return names
+
+
 def _deploy_profile_plugins(
     *,
     source_profile: Path,
@@ -375,6 +482,7 @@ def _deploy_profile_plugins(
 
     target_plugins = target_profile / "plugins"
     target_plugins.mkdir(parents=True, exist_ok=True)
+    _relocate_scannable_plugin_backups(target_plugins)
     for name in names:
         source = source_profile / "plugins" / name
         target = target_plugins / name
@@ -383,7 +491,7 @@ def _deploy_profile_plugins(
             shutil.rmtree(staging)
         shutil.copytree(source, staging)
 
-        backup = target_plugins / f"{name}.bak.discord-{timestamp}"
+        backup = _plugin_backup_path(target_plugins, name, timestamp)
         moved_existing = False
         try:
             if target.exists():
@@ -418,6 +526,7 @@ def _create_or_update_profiles(
     hermes_home: Path,
     hermes_bin: str,
     timestamp: str,
+    update_gateway_plugin_config: bool = True,
 ) -> None:
     profiles_root = hermes_home / "profiles"
     profiles_root.mkdir(parents=True, exist_ok=True)
@@ -456,6 +565,14 @@ def _create_or_update_profiles(
             target_profile=target,
             timestamp=timestamp,
         )
+
+    _deploy_multiplex_runtime_plugins(
+        channels=channels,
+        repo_root=repo_root,
+        hermes_home=hermes_home,
+        timestamp=timestamp,
+        update_config=update_gateway_plugin_config,
+    )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -545,6 +662,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         existing = _load_yaml(config_path) if config_path.exists() else {}
         rendered = render_config(existing, manifest, channels)
+        runtime_plugin_names = sorted(
+            _multiplex_runtime_plugins(channels=channels, repo_root=repo_root)
+        )
+        rendered = _enable_profile_plugins(rendered, runtime_plugin_names)
     except ConfigurationError as exc:
         print(f"Configuration invalide : {exc}", file=sys.stderr)
         return 2
@@ -584,6 +705,7 @@ def main(argv: list[str] | None = None) -> int:
             hermes_home=hermes_home,
             hermes_bin=args.hermes_bin,
             timestamp=timestamp,
+            update_gateway_plugin_config=False,
         )
         backup = _backup(config_path, timestamp)
         if backup:

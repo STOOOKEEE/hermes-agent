@@ -3,6 +3,7 @@ version: 1.0.0
 description: "Publication X minimale via XActions, avec validation du compte et approbation humaine obligatoire."
 author: STOOOKEEE
 kind: standalone
+multiplex_global: true
 provides_tools:
   - xactions_post_tweet
 hooks:

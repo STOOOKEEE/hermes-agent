@@ -10,6 +10,7 @@ import yaml
 from scripts.configure_discord import (
     ConfigurationError,
     _create_or_update_profiles,
+    _deploy_multiplex_runtime_plugins,
     _deploy_profile_plugins,
     _enable_profile_plugins,
     _env_has_value,
@@ -218,6 +219,60 @@ class ConfigureDiscordTests(unittest.TestCase):
             (target / "config.yaml").read_text(encoding="utf-8")
         )
         self.assertEqual(["existing", "publisher"], rendered["plugins"]["enabled"])
+
+        (plugin / "__init__.py").write_text(
+            "VERSION = 2\ndef register(ctx): pass\n", encoding="utf-8"
+        )
+        _deploy_profile_plugins(
+            source_profile=source,
+            target_profile=target,
+            timestamp="20260102T000000Z",
+        )
+        self.assertFalse(any((target / "plugins").glob("*.bak.discord-*")))
+        self.assertTrue(
+            (
+                target
+                / "backups"
+                / "plugins"
+                / "publisher.bak.discord-20260102T000000Z"
+            ).is_dir()
+        )
+
+    def test_multiplex_runtime_plugin_is_deployed_and_enabled_at_gateway(self) -> None:
+        source = self.repo / "profiles" / "twitter" / "plugins" / "reader"
+        source.mkdir(parents=True)
+        (source / "__init__.py").write_text(
+            "def register(ctx): pass\n", encoding="utf-8"
+        )
+        (source / "plugin.yaml").write_text(
+            "name: reader\n"
+            "version: 1.0.0\n"
+            "kind: standalone\n"
+            "multiplex_global: true\n",
+            encoding="utf-8",
+        )
+        hermes_home = self.repo / "hermes-home"
+        hermes_home.mkdir()
+        (hermes_home / "config.yaml").write_text(
+            "plugins:\n  enabled:\n    - existing\n", encoding="utf-8"
+        )
+
+        names = _deploy_multiplex_runtime_plugins(
+            channels=validate_manifest(self.manifest, self.repo),
+            repo_root=self.repo,
+            hermes_home=hermes_home,
+            timestamp="20260101T000000Z",
+            update_config=True,
+        )
+
+        self.assertEqual(["reader"], names)
+        self.assertTrue(
+            (hermes_home / "plugins" / "reader" / "plugin.yaml").is_file()
+        )
+        config = yaml.safe_load(
+            (hermes_home / "config.yaml").read_text(encoding="utf-8")
+        )
+        self.assertEqual(["existing", "reader"], config["plugins"]["enabled"])
 
     def test_plugin_config_rejects_malformed_enabled_list(self) -> None:
         with self.assertRaises(ConfigurationError):

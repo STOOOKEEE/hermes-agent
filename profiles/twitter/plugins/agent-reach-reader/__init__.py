@@ -128,8 +128,32 @@ def _normalize_username(value: str) -> str:
     return value.strip().lstrip("@").lower()
 
 
+def _active_profile_is_twitter() -> bool:
+    """Le plugin est global au processus, mais strictement limité au profil Twitter."""
+
+    try:
+        from hermes_constants import get_hermes_home
+
+        return Path(get_hermes_home()).name == "twitter"
+    except ImportError:
+        return os.getenv("HERMES_PROFILE", "").strip().lower() == "twitter"
+
+
+def _profile_secret(name: str) -> str:
+    """Lit le secret du profil actif sans consulter l'environnement d'un autre profil."""
+
+    try:
+        from agent.secret_scope import get_secret
+
+        return str(get_secret(name, "") or "")
+    except ImportError:
+        return os.getenv(name, "")
+
+
 def _load_configuration() -> dict[str, str]:
-    expected = _normalize_username(os.getenv("XACTIONS_EXPECTED_USERNAME", ""))
+    if not _active_profile_is_twitter():
+        raise ReaderConfigurationError("Outils X indisponibles hors du profil twitter")
+    expected = _normalize_username(_profile_secret("XACTIONS_EXPECTED_USERNAME"))
     if not expected:
         raise ReaderConfigurationError(
             "XACTIONS_EXPECTED_USERNAME manque dans le .env du profil twitter"
