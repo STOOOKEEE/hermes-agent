@@ -15,6 +15,11 @@ aux bots : surveille uniquement leurs alertes entrantes. Une alerte de prix aber
 d'inventaire incohérent ou d'ordres incontrôlables justifie `diaso_panic`. Des erreurs
 répétées mais non confirmées justifient d'abord `diaso_pause`.
 
+Chaque message `MATCHED` ou `New loan matched` doit produire un audit. Le guardian
+recalcule le LTV à partir de `loanEq` et `exit`, contrôle l'âge du prix et compare le
+résultat au LTV annoncé. Un snapshot absent est signalé ; un snapshot présent mais
+illisible bloque les nouveaux prêts ; une incohérence de calcul déclenche le panic.
+
 Après une action, donne le bot concerné, le motif et l'accusé de réception. N'envoie
 aucune commande supplémentaire pour vérifier l'état.
 

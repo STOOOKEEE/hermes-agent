@@ -29,6 +29,15 @@ NO_ACTION = Decision("none", "message sans signal de risque")
 
 _LTV_RE = re.compile(r"\bLTV\s*(?:[:=]|is)?\s*(\d{1,3}(?:[.,]\d+)?)\s*%", re.I)
 _AGE_MIN_RE = re.compile(r"\bage\s*=\s*(\d+)\s*min\b", re.I)
+_LOAN_EQ_RE = re.compile(
+    r"\bloanEq\s*=\s*(\d+(?:[.,]\d+)?)\s*ETH\b",
+    re.I,
+)
+_EXIT_PRICE_RE = re.compile(
+    r"\bexit\s*=\s*(\d+(?:[.,]\d+)?)\s*ETH\b",
+    re.I,
+)
+_RISK_SNAPSHOT_RE = re.compile(r"\bRISK\s*\|", re.I)
 _COMMAND_RESPONSE_RE = re.compile(
     r"^\s*(?:⏸|🛑).*\b(?:PAUSED|PAUSE|PANIC)\b|"
     r"^\s*(?:Déjà|Already)\s+.*\b(?:paused|running)\b|"
@@ -103,8 +112,56 @@ class RiskEngine:
 
     def _lending(self, text: str, now: float) -> Decision:
         ltv_match = _LTV_RE.search(text)
+        ltv = float(ltv_match.group(1).replace(",", ".")) if ltv_match else None
+        verified_match_reason: str | None = None
+        if _LENDING_MATCH_RE.search(text):
+            loan_match = _LOAN_EQ_RE.search(text)
+            exit_match = _EXIT_PRICE_RE.search(text)
+            age_match = _AGE_MIN_RE.search(text)
+            has_snapshot = _RISK_SNAPSHOT_RE.search(text) is not None
+
+            if not has_snapshot:
+                return Decision(
+                    "notify",
+                    "audit incomplet : le message de match ne contient pas de snapshot RISK",
+                    "warning",
+                )
+            if ltv is None or loan_match is None or exit_match is None or age_match is None:
+                return Decision(
+                    "pause",
+                    "snapshot RISK incomplet ou illisible sur un nouveau loan",
+                    "critical",
+                )
+
+            loan_eth = float(loan_match.group(1).replace(",", "."))
+            exit_eth = float(exit_match.group(1).replace(",", "."))
+            age_minutes = int(age_match.group(1))
+            if loan_eth <= 0 or exit_eth <= 0:
+                return Decision(
+                    "panic",
+                    "montant ou prix de sortie invalide dans le snapshot RISK",
+                    "critical",
+                )
+            recomputed_ltv = 100 * loan_eth / exit_eth
+            if abs(recomputed_ltv - ltv) > 1.0:
+                return Decision(
+                    "panic",
+                    "LTV incohérent : "
+                    f"annoncé {ltv:.1f} %, recalculé {recomputed_ltv:.1f} %",
+                    "critical",
+                )
+            if age_minutes >= 60:
+                return Decision(
+                    "pause",
+                    f"loan matché avec un prix âgé de {age_minutes} min",
+                    "critical",
+                )
+            verified_match_reason = (
+                f"loan vérifié : LTV {ltv:.1f} %, prix âgé de {age_minutes} min"
+            )
+
         if ltv_match:
-            ltv = float(ltv_match.group(1).replace(",", "."))
+            assert ltv is not None
             if ltv >= 100:
                 return Decision(
                     "panic",
@@ -165,10 +222,12 @@ class RiskEngine:
                 )
             return Decision("notify", "première erreur RPC, en attente de confirmation", "warning")
 
-        if _LENDING_MATCH_RE.search(text):
-            # Un match n'est pas une anomalie. Sans prix et conversion de devise
-            # vérifiés, aucun calcul montant/floor n'est autorisé ici.
-            return Decision("notify", "nouvelle opération de lending à auditer", "info")
+        if verified_match_reason is not None:
+            return Decision(
+                "notify",
+                verified_match_reason,
+                "info",
+            )
         return NO_ACTION
 
     def _market_maker(self, text: str, now: float) -> Decision:

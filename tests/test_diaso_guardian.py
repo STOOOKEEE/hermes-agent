@@ -26,13 +26,65 @@ SPEC.loader.exec_module(PLUGIN)
 
 
 class RiskRulesTests(unittest.TestCase):
-    def test_lending_match_never_invents_cross_currency_ltv(self) -> None:
+    def test_legacy_lending_match_is_reported_as_incomplete(self) -> None:
         decision = RiskEngine().evaluate(
             "lending",
             "✅ MATCHED gondi | terraforms #7800 | 300.00 USDC @ eAPR 48% × 15d",
             now=1,
         )
         self.assertEqual("notify", decision.action)
+        self.assertIn("audit incomplet", decision.reason)
+
+    def test_lending_match_recomputes_and_verifies_ltv(self) -> None:
+        decision = RiskEngine().evaluate(
+            "lending",
+            "✅ MATCHED gondi | terraforms #7800 | 300 USDC @ eAPR 48% × 15d\n"
+            "RISK | loanEq=0.100000 ETH | exit=0.140000 ETH | floor=0.150000 ETH "
+            "| LTV=71.4% | age=4min",
+            now=1,
+        )
+        self.assertEqual("notify", decision.action)
+        self.assertIn("loan vérifié", decision.reason)
+
+    def test_lending_match_panics_on_inconsistent_ltv_math(self) -> None:
+        decision = RiskEngine().evaluate(
+            "lending",
+            "New loan matched on blur\n"
+            "RISK | loanEq=0.100000 ETH | exit=0.140000 ETH | floor=0.150000 ETH "
+            "| LTV=42.0% | age=4min",
+            now=1,
+        )
+        self.assertEqual("panic", decision.action)
+        self.assertIn("recalculé", decision.reason)
+
+    def test_lending_match_pauses_on_stale_snapshot(self) -> None:
+        decision = RiskEngine().evaluate(
+            "lending",
+            "New loan matched on blur\n"
+            "RISK | loanEq=0.100000 ETH | exit=0.140000 ETH | floor=0.150000 ETH "
+            "| LTV=71.4% | age=90min",
+            now=1,
+        )
+        self.assertEqual("pause", decision.action)
+
+    def test_lending_match_pauses_when_snapshot_is_unavailable(self) -> None:
+        decision = RiskEngine().evaluate(
+            "lending",
+            "✅ MATCHED gondi | terraforms #7800 | 0.1 WETH @ eAPR 48% × 15d\n"
+            "RISK | unavailable",
+            now=1,
+        )
+        self.assertEqual("pause", decision.action)
+
+    def test_lending_match_pauses_on_dangerous_verified_ltv(self) -> None:
+        decision = RiskEngine().evaluate(
+            "lending",
+            "New loan matched on blur\n"
+            "RISK | loanEq=0.100000 ETH | exit=0.105000 ETH | floor=0.110000 ETH "
+            "| LTV=95.2% | age=4min",
+            now=1,
+        )
+        self.assertEqual("pause", decision.action)
 
     def test_lending_explicit_high_ltv_panics(self) -> None:
         decision = RiskEngine().evaluate("lending", "RISK ALERT LTV: 104%", now=1)

@@ -23,3 +23,8 @@ Le token Discord reste dans `~/.hermes/.env`. La session Telethon existante rest
 Toujours démarrer en simulation et exécuter les tests sans envoyer de `/status` aux
 bots. L'armement ne doit passer à `true` qu'après ce smoke test. Un arrêt automatique est
 sticky : seul l'opérateur humain peut envoyer `/resume` directement au bot concerné.
+
+Chaque alerte de loan match contenant une ligne structurée `RISK` est vérifiée sans
+commande sortante : Hermes recalcule `LTV = loanEq / exit`, contrôle l'âge du prix et
+applique les seuils déterministes. Les anciens messages sans snapshot restent visibles
+comme audits incomplets, sans inventer de valorisation.
