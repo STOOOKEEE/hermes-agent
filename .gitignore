@@ -1,4 +1,39 @@
-node_modules/
+# Secrets and local operator configuration
 .env
-*.log
+.env.*
+config/discord-channels.yaml
+**/WALLETS.md
+**/credentials.*
+**/secrets/
+
+# Hermes runtime state (never version these)
+*.session
+*.session-*
+*.db
+*.db-shm
+*.db-wal
+auth.json
+sessions/
+state-snapshots/
+logs/
+cache/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Node / generic build artifacts
+node_modules/
 dist/
+build/
+*.log
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

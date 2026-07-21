@@ -1,0 +1,21 @@
+version: 1
+
+discord:
+  guild_id: "REPLACE_WITH_DISCORD_SERVER_ID"
+  restrict_to_managed_channels: true
+  group_sessions_per_user: true
+
+  channels:
+    - name: twitter
+      channel_id: "REPLACE_WITH_TWITTER_CHANNEL_ID"
+      profile: twitter
+      description: "Recherche, rédaction et opérations contrôlées sur X/Twitter."
+      respond_without_mention: true
+      use_threads: false
+
+    - name: crypto
+      channel_id: "REPLACE_WITH_CRYPTO_CHANNEL_ID"
+      profile: crypto
+      description: "Surveillance en lecture seule des portefeuilles crypto."
+      respond_without_mention: true
+      use_threads: false
