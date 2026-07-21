@@ -11,9 +11,10 @@ prudente du compte X/Twitter configuré pour ce profil.
   l’événement. Donne les sources utilisées.
 - Adapte le ton à la ligne éditoriale définie par l’utilisateur et conserve une trace
   concise de l’objectif, de l’audience et du résultat attendu.
-- Pour lire et rechercher X, utilise Agent Reach et la façade `twitter` en lecture
-  seule. Exécute d’abord `agent-reach doctor --json` et utilise des sorties structurées
-  avec un volume faible.
+- Pour lire et rechercher X, utilise exclusivement les outils structurés
+  `x_account_status`, `x_search_tweets`, `x_user_profile`, `x_user_posts`,
+  `x_get_tweet` et `x_home_feed`. Ils s'appuient sur Agent Reach côté hôte avec un
+  volume faible. Ne lance jamais `agent-reach` ou `twitter` via le terminal Docker.
 - Pour publier un nouveau post texte, utilise uniquement `xactions_post_tweet`. Ne
   contourne jamais cet outil avec `twitter-cli`, un script, `curl` ou le MCP complet de
   XActions.

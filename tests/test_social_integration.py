@@ -22,6 +22,14 @@ PLUGIN_PATH = (
     / "xactions-publisher"
     / "__init__.py"
 )
+READER_PLUGIN_PATH = (
+    REPO_ROOT
+    / "profiles"
+    / "twitter"
+    / "plugins"
+    / "agent-reach-reader"
+    / "__init__.py"
+)
 RUNNER_PATH = PLUGIN_PATH.with_name("runner.mjs")
 WRAPPER_PATH = REPO_ROOT / "integrations" / "twitter_readonly.py"
 
@@ -148,6 +156,129 @@ class XActionsRunnerTests(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual("@stoookeee", result["account"])
         self.assertEqual("https://x.com/stoookeee/status/123456789", result["url"])
+
+
+class AgentReachReaderTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.plugin = _load_module("agent_reach_reader_test", READER_PLUGIN_PATH)
+        self.plugin._account_cache.update(username="", checked_at=0.0)
+
+    def _configured(self, root: Path):
+        config = root / "config.yaml"
+        config.write_text(
+            "twitter_auth_token: top-secret-auth\n"
+            "twitter_ct0: top-secret-ct0\n",
+            encoding="utf-8",
+        )
+        config.chmod(0o600)
+        twitter = root / "twitter"
+        twitter.write_text("#!/bin/sh\n", encoding="utf-8")
+        twitter.chmod(0o755)
+        return config, twitter
+
+    def test_status_keeps_cookies_out_of_process_arguments(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            config, twitter = self._configured(Path(temporary))
+            payload = {
+                "ok": True,
+                "data": {"user": {"username": "STOOOKEEE"}},
+            }
+            completed = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=json.dumps(payload), stderr=""
+            )
+            with (
+                patch.object(self.plugin, "X_CONFIG", config),
+                patch.object(self.plugin, "TWITTER", twitter),
+                patch.object(self.plugin.subprocess, "run", return_value=completed) as run,
+                patch.dict(os.environ, {"XACTIONS_EXPECTED_USERNAME": "STOOOKEEE"}),
+            ):
+                result = json.loads(self.plugin._handle_status({}))
+
+        self.assertTrue(result["ok"])
+        command = run.call_args.args[0]
+        self.assertEqual([str(twitter), "--compact", "status", "--json"], command)
+        self.assertNotIn("top-secret-auth", " ".join(command))
+        self.assertNotIn("top-secret-ct0", " ".join(command))
+        self.assertNotIn("env", run.call_args.kwargs)
+
+    def test_account_mismatch_blocks_search(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            config, twitter = self._configured(Path(temporary))
+            completed = subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout=json.dumps(
+                    {"ok": True, "data": {"user": {"username": "OTHER_ACCOUNT"}}}
+                ),
+                stderr="",
+            )
+            with (
+                patch.object(self.plugin, "X_CONFIG", config),
+                patch.object(self.plugin, "TWITTER", twitter),
+                patch.object(self.plugin.subprocess, "run", return_value=completed) as run,
+                patch.dict(os.environ, {"XACTIONS_EXPECTED_USERNAME": "STOOOKEEE"}),
+            ):
+                result = json.loads(
+                    self.plugin._handle_search({"query": "Hermes", "max_results": 3})
+                )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("Compte X inattendu", result["error"])
+        self.assertEqual(1, run.call_count)
+
+    def test_search_builds_a_typed_read_only_command(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            config, twitter = self._configured(Path(temporary))
+            status = subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout=json.dumps(
+                    {"ok": True, "data": {"user": {"username": "STOOOKEEE"}}}
+                ),
+                stderr="",
+            )
+            search = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=json.dumps({"ok": True, "data": []}), stderr=""
+            )
+            with (
+                patch.object(self.plugin, "X_CONFIG", config),
+                patch.object(self.plugin, "TWITTER", twitter),
+                patch.object(self.plugin.subprocess, "run", side_effect=[status, search]) as run,
+                patch.dict(os.environ, {"XACTIONS_EXPECTED_USERNAME": "STOOOKEEE"}),
+            ):
+                result = json.loads(
+                    self.plugin._handle_search(
+                        {
+                            "query": "agents IA",
+                            "max_results": 3,
+                            "search_type": "latest",
+                            "language": "fr",
+                            "since": "2026-07-01",
+                        }
+                    )
+                )
+
+        self.assertTrue(result["ok"])
+        command = run.call_args_list[1].args[0]
+        self.assertEqual(
+            [
+                str(twitter),
+                "--compact",
+                "search",
+                "agents IA",
+                "--type",
+                "latest",
+                "--max",
+                "3",
+                "--lang",
+                "fr",
+                "--since",
+                "2026-07-01",
+                "--json",
+            ],
+            command,
+        )
+        self.assertFalse(run.call_args_list[1].kwargs.get("shell", False))
 
 
 class TwitterReadonlyTests(unittest.TestCase):

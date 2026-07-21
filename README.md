@@ -47,6 +47,12 @@ connecté avant l’envoi et utilise le mécanisme d’approbation natif de Herm
 exact apparaît dans la demande d’approbation ; un refus, une expiration ou une erreur
 du portail d’approbation bloque l’action.
 
+Le plugin `agent-reach-reader` exécute les lectures X sur l’hôte et expose au profil
+Twitter des outils structurés de statut, recherche, profil, posts, tweet et fil
+d’accueil. Le conteneur Docker de raisonnement ne reçoit ni les cookies ni un montage
+du dossier Agent Reach. Chaque lecture vérifie que la session correspond au compte X
+attendu avant d’interroger les données.
+
 Les révisions auditées sont figées dans
 [`integrations/versions.yaml`](integrations/versions.yaml). XActions est exécuté
 directement depuis ses modules HTTP nécessaires : aucun `npm install` ni script npm

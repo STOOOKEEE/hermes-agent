@@ -1,0 +1,12 @@
+name: agent-reach-reader
+version: 1.0.0
+description: "Lecture X structurée via l'installation Agent Reach, sans exposer les cookies au conteneur Hermes."
+author: STOOOKEEE
+kind: standalone
+provides_tools:
+  - x_account_status
+  - x_search_tweets
+  - x_user_profile
+  - x_user_posts
+  - x_get_tweet
+  - x_home_feed
