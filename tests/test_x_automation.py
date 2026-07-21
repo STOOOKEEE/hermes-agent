@@ -35,6 +35,16 @@ class EditorialBriefTests(unittest.TestCase):
         self.assertIn("Publie exactement ce brouillon", prompt)
         self.assertNotIn("xactions_post_tweet", prompt)
 
+    def test_delivery_removes_model_preamble(self) -> None:
+        raw = """Analyse interne qui ne doit pas partir.\n\n📝 **Brouillon X — matin**
+> Texte exact.\n\n**Pourquoi cet angle :** pertinent.\n**Source :** aucune affirmation externe
+**Statut :** non publié — validation requise.\n\nDétail final inutile."""
+        delivered = self.module._delivery_only(raw)
+        self.assertTrue(delivered.startswith("📝 **Brouillon X"))
+        self.assertTrue(delivered.endswith("validation requise."))
+        self.assertNotIn("Analyse interne", delivered)
+        self.assertNotIn("Détail final", delivered)
+
     def test_oneshot_only_loads_reader_and_web(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / ".hermes"

@@ -99,6 +99,20 @@ def _sanitize(text: str) -> str:
     return safe
 
 
+def _delivery_only(text: str) -> str:
+    """Retire un éventuel préambule du modèle avant la fiche de brouillon."""
+
+    safe = _sanitize(text)
+    marker = re.search(r"(?m)^📝\s+(?:\*\*)?Brouillon X", safe)
+    if not marker:
+        return safe
+    delivery = safe[marker.start() :]
+    status = re.search(r"(?m)^\*\*Statut\s*:\*\*.*$", delivery)
+    if status:
+        delivery = delivery[: status.end()]
+    return delivery.strip()
+
+
 def run(now: datetime | None = None) -> tuple[int, str]:
     current = now or datetime.now().astimezone()
     root = _hermes_home()
@@ -140,7 +154,7 @@ def run(now: datetime | None = None) -> tuple[int, str]:
     if completed.returncode != 0:
         detail = completed.stderr or completed.stdout or f"code {completed.returncode}"
         return 0, f"⚠️ Veille X en erreur : {_sanitize(detail)}"
-    output = _sanitize(completed.stdout)
+    output = _delivery_only(completed.stdout)
     if not output:
         return 0, "⚠️ Veille X terminée sans brouillon."
     return 0, output
