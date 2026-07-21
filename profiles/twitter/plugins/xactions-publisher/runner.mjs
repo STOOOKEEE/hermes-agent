@@ -30,17 +30,31 @@ try {
   for await (const chunk of process.stdin) chunks.push(chunk);
   const rawInput = Buffer.concat(chunks).toString('utf8');
   const payload = JSON.parse(rawInput);
+  const action = String(payload?.action || 'post');
   const text = payload?.text;
-  if (typeof text !== 'string' || text.length === 0 || text.length > 280) {
-    throw new Error('Texte invalide ou supérieur à 280 caractères');
+  const tweetId = String(payload?.tweet_id || '');
+  const username = String(payload?.username || '').replace(/^@/, '').toLowerCase();
+
+  if (!['post', 'reply', 'like', 'follow'].includes(action)) {
+    throw new Error(`Action XActions non autorisée: ${action}`);
+  }
+  if (['post', 'reply'].includes(action)) {
+    if (typeof text !== 'string' || text.length === 0 || text.length > 280) {
+      throw new Error('Texte invalide ou supérieur à 280 caractères');
+    }
+  }
+  if (['reply', 'like'].includes(action) && !/^\d+$/.test(tweetId)) {
+    throw new Error('Identifiant de post X invalide');
+  }
+  if (action === 'follow' && !/^[a-z0-9_]{1,15}$/i.test(username)) {
+    throw new Error('Nom de compte X invalide');
   }
 
   const moduleUrl = (relativePath) =>
     pathToFileURL(path.join(root, 'src', 'scrapers', 'twitter', 'http', relativePath)).href;
-  const [{ TwitterHttpClient }, { TwitterAuth }, { postTweet }] = await Promise.all([
+  const [{ TwitterHttpClient }, { TwitterAuth }] = await Promise.all([
     import(moduleUrl('client.js')),
     import(moduleUrl('auth.js')),
-    import(moduleUrl('actions.js')),
   ]);
 
   const cookies = `auth_token=${authToken}; ct0=${ct0}`;
@@ -58,21 +72,50 @@ try {
     rateLimitStrategy: 'error',
     maxRetries: 0,
   });
-  const result = await postTweet(client, text);
-  const tweetId =
-    result?.rest_id || result?.legacy?.id_str || result?.tweet?.rest_id || null;
-  if (!tweetId) {
-    throw new Error("XActions n'a retourné aucun identifiant de post");
+  if (action === 'post' || action === 'reply') {
+    const actions = await import(moduleUrl('actions.js'));
+    const result =
+      action === 'post'
+        ? await actions.postTweet(client, text)
+        : await actions.replyToTweet(client, tweetId, text);
+    const createdTweetId =
+      result?.rest_id || result?.legacy?.id_str || result?.tweet?.rest_id || null;
+    if (!createdTweetId) {
+      throw new Error("XActions n'a retourné aucun identifiant de post");
+    }
+    process.stdout.write(
+      JSON.stringify({
+        success: true,
+        action,
+        account: `@${actualUsername}`,
+        tweet_id: String(createdTweetId),
+        url: `https://x.com/${actualUsername}/status/${createdTweetId}`,
+      }),
+    );
+  } else if (action === 'like') {
+    const { likeTweet } = await import(moduleUrl('engagement.js'));
+    await likeTweet(client, tweetId);
+    process.stdout.write(
+      JSON.stringify({
+        success: true,
+        action,
+        account: `@${actualUsername}`,
+        tweet_id: tweetId,
+        url: `https://x.com/i/web/status/${tweetId}`,
+      }),
+    );
+  } else {
+    const { followByUsername } = await import(moduleUrl('engagement.js'));
+    await followByUsername(client, username);
+    process.stdout.write(
+      JSON.stringify({
+        success: true,
+        action,
+        account: `@${actualUsername}`,
+        target_account: `@${username}`,
+      }),
+    );
   }
-
-  process.stdout.write(
-    JSON.stringify({
-      success: true,
-      account: `@${actualUsername}`,
-      tweet_id: String(tweetId),
-      url: `https://x.com/${actualUsername}/status/${tweetId}`,
-    }),
-  );
 } catch (error) {
   process.stdout.write(
     JSON.stringify({

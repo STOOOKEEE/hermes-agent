@@ -25,8 +25,9 @@ Hermes sait déjà faire ce routage nativement avec `gateway.multiplex_profiles`
   `~/.hermes/profiles/crypto/WALLETS.md`.
 - Une seed phrase, une clé privée ou un fichier de wallet ne doit jamais être donné à
   l’agent ni ajouté à ce dépôt.
-- Le profil `twitter` demande une validation explicite avant de publier, supprimer ou
-  envoyer un message privé.
+- Le profil `twitter` demande une validation explicite avant tout nouveau post. Les
+  replies, likes et follows unitaires demandés dans `#x` n'ajoutent pas de seconde
+  validation ; les suppressions et messages privés restent indisponibles.
 - Le profil `crypto` est strictement en lecture seule et ne signe aucune transaction.
 
 Voir aussi [SECURITY.md](SECURITY.md).
@@ -37,15 +38,21 @@ Les deux projets ont des rôles distincts :
 
 - [`Panniantong/Agent-Reach`](https://github.com/Panniantong/Agent-Reach) route
   les recherches et lectures vers `twitter-cli` ;
-- [`nirholas/XActions`](https://github.com/nirholas/XActions) sert uniquement à
-  publier un nouveau post texte grâce au plugin Hermes versionné ici.
+- [`nirholas/XActions`](https://github.com/nirholas/XActions) sert aux écritures
+  unitaires explicitement exposées par le plugin Hermes versionné ici.
 
 Le MCP complet de XActions n’est volontairement pas exposé : sa surface comprend de
-nombreuses mutations qui ne sont pas nécessaires. Le plugin
-`xactions-publisher` enregistre seulement `xactions_post_tweet`, vérifie le compte
-connecté avant l’envoi et utilise le mécanisme d’approbation natif de Hermes. Le texte
-exact apparaît dans la demande d’approbation ; un refus, une expiration ou une erreur
-du portail d’approbation bloque l’action.
+nombreuses mutations qui ne sont pas nécessaires. Le plugin `xactions-publisher`
+enregistre quatre actions unitaires et vérifie le compte connecté avant chacune :
+
+- `xactions_post_tweet` conserve l'approbation Hermes sur le texte exact ;
+- `xactions_reply_tweet`, `xactions_like_tweet` et `xactions_follow_user` s'exécutent
+  directement après une instruction claire de l'utilisateur dans `#x`, sans seconde
+  fenêtre d'approbation.
+
+Un refus, une expiration ou une erreur du portail d’approbation bloque toujours un
+nouveau post. Les interactions directes n'acceptent ni liste ni opération en masse et
+ne sont pas accessibles aux deux tâches éditoriales planifiées.
 
 Le plugin `agent-reach-reader` exécute les lectures X sur l’hôte et expose au profil
 Twitter des outils structurés de statut, recherche, profil, posts, tweet et fil

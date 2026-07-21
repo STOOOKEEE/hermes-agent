@@ -1,10 +1,13 @@
 name: xactions-publisher
-version: 1.0.0
-description: "Publication X minimale via XActions, avec validation du compte et approbation humaine obligatoire."
+version: 1.1.0
+description: "Écriture X unitaire via XActions : posts approuvés, replies/likes/follows directs sur instruction utilisateur."
 author: STOOOKEEE
 kind: standalone
 multiplex_global: true
 provides_tools:
   - xactions_post_tweet
+  - xactions_reply_tweet
+  - xactions_like_tweet
+  - xactions_follow_user
 hooks:
   - pre_tool_call

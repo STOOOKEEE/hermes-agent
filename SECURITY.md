@@ -17,13 +17,15 @@ sa révocation immédiate, puis sa rotation sur le serveur.
 
 ## Limites opérationnelles
 
-- `twitter` peut rechercher et préparer librement, mais toute publication,
-  suppression, réponse ou DM demande une approbation humaine sur le contenu exact.
+- `twitter` peut rechercher et préparer librement. Tout nouveau post demande une
+  approbation Hermes sur le contenu exact. Une instruction utilisateur claire peut
+  déclencher directement un reply, like ou follow unitaire ; aucune campagne ou
+  interaction planifiée n'est autorisée.
 - Agent Reach est limité à la lecture dans ce déploiement. Sa commande `twitter` est
   une façade à allowlist ; les sous-commandes mutantes de `twitter-cli` sont refusées.
-- XActions n’est pas exposé comme MCP général. Seul `xactions_post_tweet` est chargé
-  dans le profil `twitter`, avec approbation Hermes obligatoire et vérification du nom
-  de compte avant publication.
+- XActions n’est pas exposé comme MCP général. Le profil `twitter` charge uniquement
+  le nouveau post approuvé et les outils unitaires reply, like et follow. Le nom du
+  compte connecté est vérifié avant chaque écriture.
 - Les cookies X vivent uniquement dans `~/.agent-reach/config.yaml` en mode `600` et
   sont transmis au sous-processus XActions par environnement, jamais comme argument de
   commande ni résultat d’outil.

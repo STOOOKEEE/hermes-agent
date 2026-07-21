@@ -75,6 +75,20 @@ class XActionsPluginTests(unittest.TestCase):
             self.plugin._approval_hook("terminal", {"command": "twitter search IA"})
         )
 
+    def test_reply_like_and_follow_do_not_request_second_approval(self) -> None:
+        cases = (
+            (
+                self.plugin.REPLY_TOOL_NAME,
+                {"tweet": "https://x.com/example/status/42", "text": "Merci !"},
+            ),
+            (self.plugin.LIKE_TOOL_NAME, {"tweet": "42"}),
+            (self.plugin.FOLLOW_TOOL_NAME, {"username": "@example"}),
+        )
+        with patch.dict(os.environ, {"HERMES_PROFILE": "twitter"}, clear=False):
+            for tool_name, args in cases:
+                with self.subTest(tool_name=tool_name):
+                    self.assertIsNone(self.plugin._approval_hook(tool_name, args))
+
     def test_publication_tool_is_blocked_outside_twitter_profile(self) -> None:
         with patch.dict(os.environ, {"HERMES_PROFILE": "crypto"}, clear=False):
             result = self.plugin._approval_hook(
@@ -129,7 +143,64 @@ class XActionsPluginTests(unittest.TestCase):
             self.assertNotIn("top-secret-auth", " ".join(command))
             self.assertNotIn("top-secret-ct0", " ".join(command))
             self.assertEqual("top-secret-auth", run.call_args.kwargs["env"]["XACTIONS_AUTH_TOKEN"])
-            self.assertEqual(json.dumps({"text": "Bonjour"}, ensure_ascii=False), run.call_args.kwargs["input"])
+            self.assertEqual(
+                json.dumps({"action": "post", "text": "Bonjour"}, ensure_ascii=False),
+                run.call_args.kwargs["input"],
+            )
+
+    def test_interaction_handlers_send_single_typed_actions(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / "config.yaml"
+            config.write_text(
+                "twitter_auth_token: top-secret-auth\n"
+                "twitter_ct0: top-secret-ct0\n",
+                encoding="utf-8",
+            )
+            config.chmod(0o600)
+            xactions = root / "xactions"
+            xactions.mkdir()
+            completed = subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout=json.dumps({"success": True}),
+                stderr="",
+            )
+            with (
+                patch.object(self.plugin, "X_CONFIG", config),
+                patch.object(self.plugin, "X_ACTIONS_ROOT", xactions),
+                patch.object(self.plugin.shutil, "which", return_value="/usr/bin/node"),
+                patch.object(self.plugin.subprocess, "run", return_value=completed) as run,
+                patch.dict(
+                    os.environ,
+                    {
+                        "XACTIONS_EXPECTED_USERNAME": "stoookeee",
+                        "HERMES_PROFILE": "twitter",
+                    },
+                ),
+            ):
+                reply = json.loads(
+                    self.plugin._handle_reply(
+                        {"tweet": "https://x.com/example/status/42", "text": "Merci"}
+                    )
+                )
+                reply_payload = json.loads(run.call_args.kwargs["input"])
+                like = json.loads(self.plugin._handle_like({"tweet": "43"}))
+                like_payload = json.loads(run.call_args.kwargs["input"])
+                follow = json.loads(
+                    self.plugin._handle_follow({"username": "@Example_User"})
+                )
+                follow_payload = json.loads(run.call_args.kwargs["input"])
+
+        self.assertTrue(reply["success"] and like["success"] and follow["success"])
+        self.assertEqual(
+            {"action": "reply", "tweet_id": "42", "text": "Merci"},
+            reply_payload,
+        )
+        self.assertEqual({"action": "like", "tweet_id": "43"}, like_payload)
+        self.assertEqual(
+            {"action": "follow", "username": "example_user"}, follow_payload
+        )
 
 
 class XActionsRunnerTests(unittest.TestCase):
@@ -177,6 +248,65 @@ class XActionsRunnerTests(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual("@stoookeee", result["account"])
         self.assertEqual("https://x.com/stoookeee/status/123456789", result["url"])
+
+    @unittest.skipUnless(shutil.which("node"), "Node.js absent")
+    def test_runner_supports_reply_like_and_follow(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            module_dir = root / "src" / "scrapers" / "twitter" / "http"
+            module_dir.mkdir(parents=True)
+            (root / "package.json").write_text('{"type":"module"}\n', encoding="utf-8")
+            (module_dir / "client.js").write_text(
+                "export class TwitterHttpClient { constructor(options) { this.options = options; } }\n",
+                encoding="utf-8",
+            )
+            (module_dir / "auth.js").write_text(
+                "export class TwitterAuth { async loginWithCookies() { "
+                "return {id:'1', username:'STOOOKEEE'}; } }\n",
+                encoding="utf-8",
+            )
+            (module_dir / "actions.js").write_text(
+                "export async function replyToTweet(client, id, text) { "
+                "return {rest_id:'987654321'}; }\n",
+                encoding="utf-8",
+            )
+            (module_dir / "engagement.js").write_text(
+                "export async function likeTweet(client, id) { return {success:true}; }\n"
+                "export async function followByUsername(client, username) { "
+                "return {success:true}; }\n",
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env.update(
+                {
+                    "XACTIONS_ROOT": str(root),
+                    "XACTIONS_AUTH_TOKEN": "secret-auth",
+                    "XACTIONS_CT0": "secret-ct0",
+                    "XACTIONS_EXPECTED_USERNAME": "stoookeee",
+                }
+            )
+            payloads = (
+                {"action": "reply", "tweet_id": "42", "text": "Merci"},
+                {"action": "like", "tweet_id": "43"},
+                {"action": "follow", "username": "example"},
+            )
+            results = []
+            for payload in payloads:
+                completed = subprocess.run(
+                    [shutil.which("node"), str(RUNNER_PATH)],
+                    input=json.dumps(payload),
+                    text=True,
+                    capture_output=True,
+                    env=env,
+                    check=False,
+                )
+                self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
+                results.append(json.loads(completed.stdout))
+
+        self.assertEqual(["reply", "like", "follow"], [item["action"] for item in results])
+        self.assertEqual("987654321", results[0]["tweet_id"])
+        self.assertEqual("43", results[1]["tweet_id"])
+        self.assertEqual("@example", results[2]["target_account"])
 
 
 class AgentReachReaderTests(unittest.TestCase):
