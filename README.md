@@ -56,6 +56,41 @@ En mode multiplexé, les plugins sont chargés par le processus gateway principa
 filtrés à chaque tour avec le profil actif et son coffre de secrets contextuel. Ils
 restent donc indisponibles dans le profil crypto.
 
+### Veille éditoriale quotidienne
+
+L'automatisation proposée génère un brouillon à 09 h 15 et un autre à 17 h 30
+(heure du serveur). Chaque tâche lance le profil Twitter avec uniquement les toolsets
+`agent_reach_reader` et `web` : `xactions_publisher` n'est pas chargé et une tâche
+planifiée ne peut donc pas publier. Le résultat est livré dans `#x`, avec un texte
+exact à valider séparément.
+
+Le générateur privilégie les signaux durables documentés par X : pertinence du sujet,
+langage clair et naturel, originalité, utilité et absence de spam. Il évite les
+hashtags par défaut, l'engagement artificiel, les doublons et le détournement de sujets
+tendance. Il ne prétend pas garantir une portée ou « hacker » le classement.
+
+Références officielles utilisées pour cette politique :
+
+- [code public du système de recommandation X](https://github.com/xai-org/x-algorithm) ;
+- [bonnes pratiques organiques X](https://business.x.com/en/basics/organic-best-practices) ;
+- [règles X relatives à l'automatisation](https://help.x.com/en/rules-and-policies/x-automation?lang=browser).
+
+Afficher le plan puis l'appliquer sur le serveur :
+
+```bash
+python3 scripts/configure_x_automation.py \
+  --channel-id IDENTIFIANT_DU_SALON_X
+
+python3 scripts/configure_x_automation.py \
+  --channel-id IDENTIFIANT_DU_SALON_X \
+  --apply
+```
+
+Le script crée ou met à jour uniquement `x-editorial-morning` et
+`x-editorial-evening`. Les autres tâches cron restent intactes. Le générateur déployé
+est sauvegardé avant remplacement et aucune donnée de session X n'est lue par
+l'installateur.
+
 Les révisions auditées sont figées dans
 [`integrations/versions.yaml`](integrations/versions.yaml). XActions est exécuté
 directement depuis ses modules HTTP nécessaires : aucun `npm install` ni script npm
