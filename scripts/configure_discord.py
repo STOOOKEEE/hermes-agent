@@ -686,7 +686,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.check or args.check_template:
-        print(f"Configuration valide : {len(channels)} salon(s), {len(channels)} profil(s)")
+        profile_count = sum(
+            channel["profile"] != DEFAULT_PROFILE for channel in channels
+        )
+        print(
+            f"Configuration valide : {len(channels)} salon(s), "
+            f"{profile_count} profil(s) dédié(s)"
+        )
         return 0
 
     if args.profiles_only:

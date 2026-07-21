@@ -1,0 +1,16 @@
+name: obsidian-vault
+version: 1.0.0
+description: "Lecture, recherche, édition et synchronisation contrôlée d'un vault Obsidian privé."
+author: STOOOKEEE
+kind: standalone
+multiplex_global: true
+provides_tools:
+  - obsidian_list_files
+  - obsidian_search_notes
+  - obsidian_read_file
+  - obsidian_write_file
+  - obsidian_append_note
+  - obsidian_git_status
+  - obsidian_git_sync
+hooks:
+  - pre_tool_call

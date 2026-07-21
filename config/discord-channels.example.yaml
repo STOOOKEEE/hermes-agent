@@ -38,3 +38,20 @@ discord:
       description: "Surveillance en lecture seule des portefeuilles crypto."
       respond_without_mention: true
       use_threads: false
+
+    - name: obsidian
+      channel_id: "REPLACE_WITH_OBSIDIAN_CHANNEL_ID"
+      profile: obsidian
+      description: "Lecture, recherche et édition contrôlée du vault Obsidian privé."
+      respond_without_mention: true
+      use_threads: false
+      toolsets:
+        - obsidian_vault
+        - web
+        - vision
+        - memory
+        - skills
+        - todo
+        - session_search
+        - clarify
+        - no_mcp

@@ -14,6 +14,7 @@ Configuration initiale prévue :
 | `#général` | `default` | Conversation générale avec le profil Hermes principal |
 | `#twitter` | `twitter` | Veille avec Agent Reach, rédaction et publication contrôlée via XActions |
 | `#crypto` | `crypto` | Surveillance en lecture seule de portefeuilles crypto |
+| `#obsidian` | `obsidian` | Lecture, recherche et édition du vault privé, avec synchronisation Git approuvée |
 
 Hermes sait déjà faire ce routage nativement avec `gateway.multiplex_profiles` et
 `gateway.profile_routes`. Ce dépôt ne maintient donc aucun fork du cœur.
