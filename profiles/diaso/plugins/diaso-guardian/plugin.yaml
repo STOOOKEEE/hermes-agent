@@ -1,0 +1,12 @@
+name: diaso-guardian
+version: 1.0.0
+description: "Monitoring et arrêts défensifs bornés des bots Diaso, sans reprise automatique."
+author: STOOOKEEE
+kind: standalone
+multiplex_global: true
+provides_tools:
+  - diaso_status
+  - diaso_pause
+  - diaso_panic
+hooks:
+  - pre_tool_call

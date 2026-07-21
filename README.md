@@ -287,3 +287,25 @@ python3 scripts/configure_discord.py \
   --manifest config/discord-channels.example.yaml \
   --check-template
 ```
+
+## Diaso Guardian
+
+Le profil `diaso` expose uniquement la lecture d'état, la pause et le panic des bots
+NFT lending / market making. Le service local réutilise la session Telethon opérateur
+pour lire leurs alertes, mais Telegram ne redevient pas un gateway Hermes : toutes les
+notifications et demandes utilisateur passent par le salon Discord Diaso.
+
+Déploiement prudent, d'abord en simulation :
+
+```bash
+python3 scripts/configure_diaso_guardian.py
+python3 scripts/configure_diaso_guardian.py --apply --activate
+```
+
+Après les deux smoke tests `diaso_status`, l'armement s'effectue explicitement :
+
+```bash
+python3 scripts/configure_diaso_guardian.py --arm --apply --activate
+```
+
+La reprise n'est jamais automatisée et aucun outil `resume` n'est fourni au profil.

@@ -1,0 +1,17 @@
+[Unit]
+Description=Diaso defensive guardian (Telegram signals, Discord control)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/hermes-agent-config/integrations/diaso_guardian
+ExecStart=%h/telethon-listener/venv/bin/python %h/hermes-agent-config/integrations/diaso_guardian/guardian.py
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

@@ -39,6 +39,23 @@ discord:
       respond_without_mention: true
       use_threads: false
 
+    - name: diaso
+      channel_id: "REPLACE_WITH_DIASO_CHANNEL_ID"
+      profile: diaso
+      description: "Monitoring et arrêts défensifs des bots Diaso."
+      respond_without_mention: true
+      use_threads: false
+      toolsets:
+        - diaso_guardian
+        - web
+        - vision
+        - memory
+        - skills
+        - todo
+        - session_search
+        - clarify
+        - no_mcp
+
     - name: obsidian
       channel_id: "REPLACE_WITH_OBSIDIAN_CHANNEL_ID"
       profile: obsidian
