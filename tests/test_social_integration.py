@@ -200,6 +200,23 @@ class AgentReachReaderTests(unittest.TestCase):
         with patch.dict(os.environ, {"HERMES_PROFILE": "crypto"}, clear=False):
             self.assertFalse(self.plugin._check_available())
 
+    def test_execute_code_cannot_treat_structured_tool_as_shell_command(self) -> None:
+        with patch.dict(os.environ, {"HERMES_PROFILE": "twitter"}, clear=False):
+            result = self.plugin._structured_tool_routing_hook(
+                "execute_code",
+                {"code": "subprocess.run(['x_account_status'], check=True)"},
+            )
+
+        self.assertEqual("block", result["action"])
+        self.assertIn("tool call", result["message"])
+
+    def test_routing_hook_does_not_block_unrelated_code(self) -> None:
+        with patch.dict(os.environ, {"HERMES_PROFILE": "twitter"}, clear=False):
+            result = self.plugin._structured_tool_routing_hook(
+                "execute_code", {"code": "print(2 + 2)"}
+            )
+        self.assertIsNone(result)
+
     def test_status_keeps_cookies_out_of_process_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             config, twitter = self._configured(Path(temporary))

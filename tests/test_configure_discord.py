@@ -15,6 +15,7 @@ from scripts.configure_discord import (
     _enable_profile_plugins,
     _env_has_value,
     _strip_profile_gateway_credentials,
+    _set_profile_discord_toolsets,
     _write_yaml_atomic,
     render_config,
     validate_manifest,
@@ -65,6 +66,11 @@ class ConfigureDiscordTests(unittest.TestCase):
     def test_validate_manifest(self) -> None:
         channels = validate_manifest(self.manifest, self.repo)
         self.assertEqual(["twitter", "crypto"], [item["profile"] for item in channels])
+
+    def test_invalid_profile_toolset_is_rejected(self) -> None:
+        self.manifest["discord"]["channels"][0]["toolsets"] = ["web", "bad tool"]
+        with self.assertRaisesRegex(ConfigurationError, "nom invalide"):
+            validate_manifest(self.manifest, self.repo)
 
     def test_template_placeholders_are_only_allowed_explicitly(self) -> None:
         template = {
@@ -211,6 +217,7 @@ class ConfigureDiscordTests(unittest.TestCase):
             source_profile=source,
             target_profile=target,
             timestamp="20260101T000000Z",
+            discord_toolsets=["agent_reach_reader", "web", "no_mcp"],
         )
 
         deployed = target / "plugins" / "publisher"
@@ -219,6 +226,10 @@ class ConfigureDiscordTests(unittest.TestCase):
             (target / "config.yaml").read_text(encoding="utf-8")
         )
         self.assertEqual(["existing", "publisher"], rendered["plugins"]["enabled"])
+        self.assertEqual(
+            ["agent_reach_reader", "web", "no_mcp"],
+            rendered["platform_toolsets"]["discord"],
+        )
 
         (plugin / "__init__.py").write_text(
             "VERSION = 2\ndef register(ctx): pass\n", encoding="utf-8"
@@ -277,6 +288,22 @@ class ConfigureDiscordTests(unittest.TestCase):
     def test_plugin_config_rejects_malformed_enabled_list(self) -> None:
         with self.assertRaises(ConfigurationError):
             _enable_profile_plugins({"plugins": {"enabled": "publisher"}}, ["publisher"])
+
+    def test_profile_discord_toolsets_replace_inherited_composite(self) -> None:
+        rendered = _set_profile_discord_toolsets(
+            {
+                "platform_toolsets": {
+                    "discord": ["hermes-discord"],
+                    "cli": ["terminal"],
+                }
+            },
+            ["agent_reach_reader", "web", "no_mcp"],
+        )
+        self.assertEqual(
+            ["agent_reach_reader", "web", "no_mcp"],
+            rendered["platform_toolsets"]["discord"],
+        )
+        self.assertEqual(["terminal"], rendered["platform_toolsets"]["cli"])
 
     def test_profile_transport_tokens_are_removed_but_provider_keys_remain(self) -> None:
         env_path = self.repo / "profile.env"

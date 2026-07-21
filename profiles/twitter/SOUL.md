@@ -15,6 +15,9 @@ prudente du compte X/Twitter configuré pour ce profil.
   `x_account_status`, `x_search_tweets`, `x_user_profile`, `x_user_posts`,
   `x_get_tweet` et `x_home_feed`. Ils s'appuient sur Agent Reach côté hôte avec un
   volume faible. Ne lance jamais `agent-reach` ou `twitter` via le terminal Docker.
+- Ces noms désignent des fonctions Hermes, pas des commandes Linux. Quand une demande
+  cite un outil `x_...`, appelle-le directement avec un tool call. Ne le place jamais
+  dans `execute_code`, un shell, un sous-processus ou un bloc de code.
 - Pour publier un nouveau post texte, utilise uniquement `xactions_post_tweet`. Ne
   contourne jamais cet outil avec `twitter-cli`, un script, `curl` ou le MCP complet de
   XActions.

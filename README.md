@@ -196,6 +196,11 @@ Les variables `DISCORD_*` et `TELEGRAM_*` sont retirées des `.env` clonés : le
 principal reste l’unique propriétaire des bots et route ensuite chaque salon vers son
 profil.
 
+La liste optionnelle `toolsets` de chaque salon remplace, pour Discord seulement, la
+surface d’outils héritée par son profil. Le profil Twitter exclut ainsi le terminal et
+`execute_code` : les noms `x_...` sont nécessairement appelés comme outils structurés,
+et les intégrations globales MCP sont désactivées dans ce salon avec `no_mcp`.
+
 Le redémarrage refuse de s’exécuter si `DISCORD_BOT_TOKEN` ou
 `DISCORD_ALLOWED_USERS` est absent de l’environnement et de `~/.hermes/.env`.
 

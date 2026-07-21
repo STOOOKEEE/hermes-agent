@@ -25,6 +25,7 @@ MANAGED_ROUTE_PREFIX = "discord-channel/"
 PLACEHOLDER_PREFIX = "REPLACE_WITH_"
 SNOWFLAKE_RE = re.compile(r"^[0-9]{15,22}$")
 PROFILE_RE = re.compile(r"^[a-z][a-z0-9]{1,31}$")
+TOOLSET_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 PROFILE_GATEWAY_ENV_PREFIXES = ("DISCORD_", "TELEGRAM_")
 
 
@@ -126,6 +127,26 @@ def validate_manifest(
             if option in channel and not isinstance(channel[option], bool):
                 errors.append(f"{prefix}.{option} doit être true ou false")
 
+        toolsets = channel.get("toolsets")
+        if toolsets is not None:
+            if not isinstance(toolsets, list) or not toolsets:
+                errors.append(f"{prefix}.toolsets doit être une liste non vide")
+                toolsets = []
+            else:
+                normalized_toolsets = [str(item).strip() for item in toolsets]
+                invalid = [
+                    item
+                    for item in normalized_toolsets
+                    if not TOOLSET_RE.fullmatch(item)
+                ]
+                if invalid:
+                    errors.append(
+                        f"{prefix}.toolsets contient un nom invalide : {invalid[0]}"
+                    )
+                if len(set(normalized_toolsets)) != len(normalized_toolsets):
+                    errors.append(f"{prefix}.toolsets contient un doublon")
+                toolsets = normalized_toolsets
+
         channel.update(
             name=name,
             channel_id=channel_id,
@@ -133,6 +154,7 @@ def validate_manifest(
             description=description,
             respond_without_mention=channel.get("respond_without_mention", False),
             use_threads=channel.get("use_threads", True),
+            toolsets=toolsets,
         )
         channels.append(channel)
 
@@ -388,6 +410,23 @@ def _enable_profile_plugins(config: dict[str, Any], names: list[str]) -> dict[st
     return result
 
 
+def _set_profile_discord_toolsets(
+    config: dict[str, Any], toolsets: list[str] | None
+) -> dict[str, Any]:
+    """Applique une surface d'outils Discord étroite au profil concerné."""
+
+    result = copy.deepcopy(config)
+    if toolsets is None:
+        return result
+    platform_toolsets = result.setdefault("platform_toolsets", {})
+    if not isinstance(platform_toolsets, dict):
+        raise ConfigurationError(
+            "platform_toolsets existe déjà mais n’est pas un objet YAML"
+        )
+    platform_toolsets["discord"] = list(toolsets)
+    return result
+
+
 def _relocate_scannable_plugin_backups(target_plugins: Path) -> None:
     """Sort les sauvegardes du dossier que le chargeur Hermes exécute."""
 
@@ -475,43 +514,48 @@ def _deploy_profile_plugins(
     source_profile: Path,
     target_profile: Path,
     timestamp: str,
+    discord_toolsets: list[str] | None = None,
 ) -> None:
     names = _profile_plugin_names(source_profile)
-    if not names:
+    if not names and discord_toolsets is None:
         return
 
-    target_plugins = target_profile / "plugins"
-    target_plugins.mkdir(parents=True, exist_ok=True)
-    _relocate_scannable_plugin_backups(target_plugins)
-    for name in names:
-        source = source_profile / "plugins" / name
-        target = target_plugins / name
-        staging = target_plugins / f".{name}.discord.tmp"
-        if staging.exists():
-            shutil.rmtree(staging)
-        shutil.copytree(source, staging)
-
-        backup = _plugin_backup_path(target_plugins, name, timestamp)
-        moved_existing = False
-        try:
-            if target.exists():
-                if backup.exists():
-                    raise ConfigurationError(f"Sauvegarde de plugin déjà présente : {backup}")
-                target.rename(backup)
-                moved_existing = True
-                print(f"Sauvegarde : {backup}")
-            staging.rename(target)
-        except Exception:
+    if names:
+        target_plugins = target_profile / "plugins"
+        target_plugins.mkdir(parents=True, exist_ok=True)
+        _relocate_scannable_plugin_backups(target_plugins)
+        for name in names:
+            source = source_profile / "plugins" / name
+            target = target_plugins / name
+            staging = target_plugins / f".{name}.discord.tmp"
             if staging.exists():
                 shutil.rmtree(staging)
-            if moved_existing and backup.exists() and not target.exists():
-                backup.rename(target)
-            raise
-        print(f"Plugin déployé : {target}")
+            shutil.copytree(source, staging)
+
+            backup = _plugin_backup_path(target_plugins, name, timestamp)
+            moved_existing = False
+            try:
+                if target.exists():
+                    if backup.exists():
+                        raise ConfigurationError(
+                            f"Sauvegarde de plugin déjà présente : {backup}"
+                        )
+                    target.rename(backup)
+                    moved_existing = True
+                    print(f"Sauvegarde : {backup}")
+                staging.rename(target)
+            except Exception:
+                if staging.exists():
+                    shutil.rmtree(staging)
+                if moved_existing and backup.exists() and not target.exists():
+                    backup.rename(target)
+                raise
+            print(f"Plugin déployé : {target}")
 
     config_path = target_profile / "config.yaml"
     current = _load_yaml(config_path) if config_path.exists() else {}
     rendered = _enable_profile_plugins(current, names)
+    rendered = _set_profile_discord_toolsets(rendered, discord_toolsets)
     backup = _backup(config_path, timestamp)
     if backup:
         print(f"Sauvegarde : {backup}")
@@ -564,6 +608,7 @@ def _create_or_update_profiles(
             source_profile=repo_root / "profiles" / profile,
             target_profile=target,
             timestamp=timestamp,
+            discord_toolsets=channel.get("toolsets"),
         )
 
     _deploy_multiplex_runtime_plugins(

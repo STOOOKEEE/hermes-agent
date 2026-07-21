@@ -27,6 +27,25 @@ TWEET_URL_RE = re.compile(
     r"^(?:https?://)?(?:www\.)?(?:x|twitter)\.com/[A-Za-z0-9_]+/status/(\d+)(?:[/?#].*)?$",
     re.IGNORECASE,
 )
+STRUCTURED_TOOL_NAMES = (
+    "x_account_status",
+    "x_search_tweets",
+    "x_user_profile",
+    "x_user_posts",
+    "x_get_tweet",
+    "x_home_feed",
+)
+SHELL_LIKE_TOOLS = {
+    "terminal",
+    "shell_exec",
+    "execute_command",
+    "execute_code",
+}
+STRUCTURED_TOOL_IN_TEXT_RE = re.compile(
+    r"(?<![A-Za-z0-9_])(?:"
+    + "|".join(map(re.escape, STRUCTURED_TOOL_NAMES))
+    + r")(?![A-Za-z0-9_])"
+)
 
 _account_cache: dict[str, Any] = {"username": "", "checked_at": 0.0}
 
@@ -387,6 +406,41 @@ def _check_available() -> bool:
     return True
 
 
+def _contains_structured_tool_name(value: Any) -> bool:
+    """Détecte un nom d'outil X tenté depuis du code ou un shell."""
+
+    if isinstance(value, str):
+        return bool(STRUCTURED_TOOL_IN_TEXT_RE.search(value))
+    if isinstance(value, dict):
+        return any(_contains_structured_tool_name(item) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_contains_structured_tool_name(item) for item in value)
+    return False
+
+
+def _structured_tool_routing_hook(
+    tool_name: str = "",
+    args: Any = None,
+    **_: Any,
+) -> dict[str, str] | None:
+    """Empêche le modèle de confondre une fonction Hermes avec un binaire."""
+
+    if (
+        _active_profile_is_twitter()
+        and tool_name in SHELL_LIKE_TOOLS
+        and _contains_structured_tool_name(args)
+    ):
+        return {
+            "action": "block",
+            "message": (
+                "Nom d'outil X utilisé comme commande système. Appelle directement "
+                "l'outil Hermes structuré demandé (par exemple x_account_status) "
+                "avec un tool call ; ne l'exécute pas via terminal ou execute_code."
+            ),
+        }
+    return None
+
+
 def register(ctx) -> None:
     tools = (
         (STATUS_SCHEMA, _handle_status),
@@ -405,3 +459,4 @@ def register(ctx) -> None:
             check_fn=_check_available,
             emoji="🔎",
         )
+    ctx.register_hook("pre_tool_call", _structured_tool_routing_hook)
