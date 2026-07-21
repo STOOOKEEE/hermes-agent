@@ -181,6 +181,9 @@ créée à côté du fichier concerné.
 Le même passage déploie les plugins présents dans `profiles/<profil>/plugins/` et les
 ajoute à l’allowlist `plugins.enabled` du profil concerné. Ainsi,
 `xactions-publisher` n’existe que dans le profil `twitter`, jamais dans `crypto`.
+Les variables `DISCORD_*` et `TELEGRAM_*` sont retirées des `.env` clonés : le gateway
+principal reste l’unique propriétaire des bots et route ensuite chaque salon vers son
+profil.
 
 Le redémarrage refuse de s’exécuter si `DISCORD_BOT_TOKEN` ou
 `DISCORD_ALLOWED_USERS` est absent de l’environnement et de `~/.hermes/.env`.

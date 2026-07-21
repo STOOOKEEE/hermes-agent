@@ -25,6 +25,7 @@ MANAGED_ROUTE_PREFIX = "discord-channel/"
 PLACEHOLDER_PREFIX = "REPLACE_WITH_"
 SNOWFLAKE_RE = re.compile(r"^[0-9]{15,22}$")
 PROFILE_RE = re.compile(r"^[a-z][a-z0-9]{1,31}$")
+PROFILE_GATEWAY_ENV_PREFIXES = ("DISCORD_", "TELEGRAM_")
 
 
 class ConfigurationError(ValueError):
@@ -292,6 +293,47 @@ def _env_has_value(name: str, env_path: Path) -> bool:
     return False
 
 
+def _strip_profile_gateway_credentials(env_path: Path, timestamp: str) -> list[str]:
+    """Retire des profils les transports possédés par le gateway principal.
+
+    Les profils clonés conservent les credentials des providers IA, mais ne doivent
+    pas démarrer leurs propres bots Telegram/Discord avec les mêmes tokens.
+    """
+
+    if not env_path.is_file():
+        return []
+    original = env_path.read_text(encoding="utf-8")
+    kept: list[str] = []
+    removed: list[str] = []
+    for line in original.splitlines():
+        stripped = line.strip()
+        key = stripped.split("=", 1)[0].strip() if "=" in stripped else ""
+        if (
+            stripped
+            and not stripped.startswith("#")
+            and any(key.startswith(prefix) for prefix in PROFILE_GATEWAY_ENV_PREFIXES)
+        ):
+            removed.append(key)
+            continue
+        kept.append(line)
+
+    if not removed:
+        return []
+    backup = _backup(env_path, timestamp)
+    if backup:
+        print(f"Sauvegarde : {backup}")
+    mode = env_path.stat().st_mode & 0o777
+    temporary = env_path.with_name(f".{env_path.name}.discord.tmp")
+    temporary.write_text("\n".join(kept).rstrip("\n") + "\n", encoding="utf-8")
+    temporary.chmod(mode)
+    os.replace(temporary, env_path)
+    print(
+        f"Credentials de gateway retirés de {env_path} : "
+        + ", ".join(sorted(set(removed)))
+    )
+    return removed
+
+
 def _profile_plugin_names(source_profile: Path) -> list[str]:
     plugins_root = source_profile / "plugins"
     if not plugins_root.is_dir():
@@ -402,6 +444,7 @@ def _create_or_update_profiles(
 
         source_soul = repo_root / "profiles" / profile / "SOUL.md"
         target_soul = target / "SOUL.md"
+        _strip_profile_gateway_credentials(target / ".env", timestamp)
         backup = _backup(target_soul, timestamp)
         if backup:
             print(f"Sauvegarde : {backup}")

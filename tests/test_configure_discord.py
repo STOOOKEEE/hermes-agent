@@ -13,6 +13,7 @@ from scripts.configure_discord import (
     _deploy_profile_plugins,
     _enable_profile_plugins,
     _env_has_value,
+    _strip_profile_gateway_credentials,
     _write_yaml_atomic,
     render_config,
     validate_manifest,
@@ -221,6 +222,35 @@ class ConfigureDiscordTests(unittest.TestCase):
     def test_plugin_config_rejects_malformed_enabled_list(self) -> None:
         with self.assertRaises(ConfigurationError):
             _enable_profile_plugins({"plugins": {"enabled": "publisher"}}, ["publisher"])
+
+    def test_profile_transport_tokens_are_removed_but_provider_keys_remain(self) -> None:
+        env_path = self.repo / "profile.env"
+        env_path.write_text(
+            "OPENROUTER_API_KEY=provider-secret\n"
+            "TELEGRAM_BOT_TOKEN=telegram-secret\n"
+            "DISCORD_BOT_TOKEN=discord-secret\n"
+            "DISCORD_ALLOWED_USERS=123\n"
+            "XACTIONS_EXPECTED_USERNAME=STOOOKEEE\n",
+            encoding="utf-8",
+        )
+        env_path.chmod(0o600)
+
+        removed = _strip_profile_gateway_credentials(
+            env_path, "20260101T000000Z"
+        )
+
+        rendered = env_path.read_text(encoding="utf-8")
+        self.assertIn("OPENROUTER_API_KEY=provider-secret", rendered)
+        self.assertIn("XACTIONS_EXPECTED_USERNAME=STOOOKEEE", rendered)
+        self.assertNotIn("telegram-secret", rendered)
+        self.assertNotIn("discord-secret", rendered)
+        self.assertEqual(
+            ["TELEGRAM_BOT_TOKEN", "DISCORD_BOT_TOKEN", "DISCORD_ALLOWED_USERS"],
+            removed,
+        )
+        self.assertTrue(
+            (self.repo / "profile.env.bak.discord-20260101T000000Z").is_file()
+        )
 
     @patch("scripts.configure_discord._create_or_update_profiles")
     def test_profiles_only_accepts_template_without_writing_gateway(self, deploy) -> None:
