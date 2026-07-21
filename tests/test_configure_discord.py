@@ -259,6 +259,9 @@ class ConfigureDiscordTests(unittest.TestCase):
         plugin.mkdir(parents=True)
         (plugin / "plugin.yaml").write_text("name: publisher\n", encoding="utf-8")
         (plugin / "__init__.py").write_text("def register(ctx): pass\n", encoding="utf-8")
+        cache = plugin / "__pycache__"
+        cache.mkdir()
+        (cache / "__init__.cpython-313.pyc").write_bytes(b"stale")
 
         target = self.repo / "hermes-home" / "profiles" / "twitter"
         target.mkdir(parents=True)
@@ -276,6 +279,7 @@ class ConfigureDiscordTests(unittest.TestCase):
 
         deployed = target / "plugins" / "publisher"
         self.assertTrue((deployed / "plugin.yaml").is_file())
+        self.assertFalse((deployed / "__pycache__").exists())
         rendered = yaml.safe_load(
             (target / "config.yaml").read_text(encoding="utf-8")
         )
@@ -316,6 +320,9 @@ class ConfigureDiscordTests(unittest.TestCase):
             "multiplex_global: true\n",
             encoding="utf-8",
         )
+        cache = source / "__pycache__"
+        cache.mkdir()
+        (cache / "__init__.cpython-313.pyc").write_bytes(b"stale")
         hermes_home = self.repo / "hermes-home"
         hermes_home.mkdir()
         (hermes_home / "config.yaml").write_text(
@@ -333,6 +340,9 @@ class ConfigureDiscordTests(unittest.TestCase):
         self.assertEqual(["reader"], names)
         self.assertTrue(
             (hermes_home / "plugins" / "reader" / "plugin.yaml").is_file()
+        )
+        self.assertFalse(
+            (hermes_home / "plugins" / "reader" / "__pycache__").exists()
         )
         config = yaml.safe_load(
             (hermes_home / "config.yaml").read_text(encoding="utf-8")

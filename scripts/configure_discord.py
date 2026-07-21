@@ -501,7 +501,11 @@ def _deploy_multiplex_runtime_plugins(
         staging = target_plugins / f".{name}.discord.tmp"
         if staging.exists():
             shutil.rmtree(staging)
-        shutil.copytree(source, staging)
+        shutil.copytree(
+            source,
+            staging,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
+        )
 
         backup = _plugin_backup_path(target_plugins, name, timestamp)
         moved_existing = False
@@ -555,7 +559,11 @@ def _deploy_profile_plugins(
             staging = target_plugins / f".{name}.discord.tmp"
             if staging.exists():
                 shutil.rmtree(staging)
-            shutil.copytree(source, staging)
+            shutil.copytree(
+                source,
+                staging,
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
+            )
 
             backup = _plugin_backup_path(target_plugins, name, timestamp)
             moved_existing = False
