@@ -271,7 +271,7 @@ def _verified_status(*, use_cache: bool = True) -> dict[str, Any]:
             ),
         }
     _account_cache.update(username=expected, checked_at=time.monotonic())
-    return status
+    return {"ok": True, "account": f"@{actual}", "authenticated": True}
 
 
 def _require_verified_account() -> dict[str, Any] | None:

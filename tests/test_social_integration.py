@@ -242,6 +242,11 @@ class AgentReachReaderTests(unittest.TestCase):
                 result = json.loads(self.plugin._handle_status({}))
 
         self.assertTrue(result["ok"])
+        self.assertEqual("@stoookeee", result["account"])
+        self.assertEqual(
+            {"ok": True, "account": "@stoookeee", "authenticated": True},
+            result,
+        )
         command = run.call_args.args[0]
         self.assertEqual([str(twitter), "--compact", "status", "--json"], command)
         self.assertNotIn("top-secret-auth", " ".join(command))
