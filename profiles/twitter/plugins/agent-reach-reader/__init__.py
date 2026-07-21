@@ -232,6 +232,11 @@ def _run_twitter(arguments: list[str]) -> dict[str, Any]:
         payload = json.loads(completed.stdout)
     except json.JSONDecodeError:
         return {"ok": False, "error": "Réponse JSON X invalide"}
+    # twitter-cli 0.8.5 renvoie un objet enveloppé pour ``status`` mais une
+    # liste JSON brute pour les collections (search, feed, user-posts). Les
+    # handlers Hermes exposent toujours un objet homogène au modèle.
+    if isinstance(payload, list):
+        return {"ok": True, "data": payload}
     if not isinstance(payload, dict):
         return {"ok": False, "error": "Réponse X inattendue"}
     return payload

@@ -384,6 +384,37 @@ class AgentReachReaderTests(unittest.TestCase):
         )
         self.assertFalse(run.call_args_list[1].kwargs.get("shell", False))
 
+    def test_raw_collection_response_is_wrapped(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            config, twitter = self._configured(Path(temporary))
+            status = subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout=json.dumps(
+                    {"ok": True, "data": {"user": {"username": "STOOOKEEE"}}}
+                ),
+                stderr="",
+            )
+            raw_items = [{"id": "42", "text": "Une réponse publique"}]
+            search = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=json.dumps(raw_items), stderr=""
+            )
+            with (
+                patch.object(self.plugin, "X_CONFIG", config),
+                patch.object(self.plugin, "TWITTER", twitter),
+                patch.object(self.plugin.subprocess, "run", side_effect=[status, search]),
+                patch.dict(
+                    os.environ,
+                    {
+                        "XACTIONS_EXPECTED_USERNAME": "STOOOKEEE",
+                        "HERMES_PROFILE": "twitter",
+                    },
+                ),
+            ):
+                result = json.loads(self.plugin._handle_search({"query": "Hermes"}))
+
+        self.assertEqual({"ok": True, "data": raw_items}, result)
+
 
 class TwitterReadonlyTests(unittest.TestCase):
     def test_write_command_is_refused_before_binary_execution(self) -> None:
