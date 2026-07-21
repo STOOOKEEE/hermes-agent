@@ -1,0 +1,9 @@
+name: xactions-publisher
+version: 1.0.0
+description: "Publication X minimale via XActions, avec validation du compte et approbation humaine obligatoire."
+author: STOOOKEEE
+kind: standalone
+provides_tools:
+  - xactions_post_tweet
+hooks:
+  - pre_tool_call

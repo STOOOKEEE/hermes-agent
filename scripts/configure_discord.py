@@ -292,6 +292,83 @@ def _env_has_value(name: str, env_path: Path) -> bool:
     return False
 
 
+def _profile_plugin_names(source_profile: Path) -> list[str]:
+    plugins_root = source_profile / "plugins"
+    if not plugins_root.is_dir():
+        return []
+    return sorted(
+        child.name
+        for child in plugins_root.iterdir()
+        if child.is_dir()
+        and (child / "plugin.yaml").is_file()
+        and (child / "__init__.py").is_file()
+    )
+
+
+def _enable_profile_plugins(config: dict[str, Any], names: list[str]) -> dict[str, Any]:
+    result = copy.deepcopy(config)
+    plugins = result.setdefault("plugins", {})
+    if not isinstance(plugins, dict):
+        raise ConfigurationError("plugins existe déjà mais n’est pas un objet YAML")
+    enabled = plugins.get("enabled")
+    if enabled is None:
+        enabled = []
+    if not isinstance(enabled, list):
+        raise ConfigurationError("plugins.enabled existe déjà mais n’est pas une liste")
+    plugins["enabled"] = _unique(
+        [str(item) for item in enabled if str(item).strip()] + names
+    )
+    return result
+
+
+def _deploy_profile_plugins(
+    *,
+    source_profile: Path,
+    target_profile: Path,
+    timestamp: str,
+) -> None:
+    names = _profile_plugin_names(source_profile)
+    if not names:
+        return
+
+    target_plugins = target_profile / "plugins"
+    target_plugins.mkdir(parents=True, exist_ok=True)
+    for name in names:
+        source = source_profile / "plugins" / name
+        target = target_plugins / name
+        staging = target_plugins / f".{name}.discord.tmp"
+        if staging.exists():
+            shutil.rmtree(staging)
+        shutil.copytree(source, staging)
+
+        backup = target_plugins / f"{name}.bak.discord-{timestamp}"
+        moved_existing = False
+        try:
+            if target.exists():
+                if backup.exists():
+                    raise ConfigurationError(f"Sauvegarde de plugin déjà présente : {backup}")
+                target.rename(backup)
+                moved_existing = True
+                print(f"Sauvegarde : {backup}")
+            staging.rename(target)
+        except Exception:
+            if staging.exists():
+                shutil.rmtree(staging)
+            if moved_existing and backup.exists() and not target.exists():
+                backup.rename(target)
+            raise
+        print(f"Plugin déployé : {target}")
+
+    config_path = target_profile / "config.yaml"
+    current = _load_yaml(config_path) if config_path.exists() else {}
+    rendered = _enable_profile_plugins(current, names)
+    backup = _backup(config_path, timestamp)
+    if backup:
+        print(f"Sauvegarde : {backup}")
+    _write_yaml_atomic(config_path, rendered)
+    print(f"Plugins activés dans : {config_path}")
+
+
 def _create_or_update_profiles(
     *,
     channels: list[dict[str, Any]],
@@ -331,6 +408,11 @@ def _create_or_update_profiles(
         target.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source_soul, target_soul)
         print(f"Mission déployée : {target_soul}")
+        _deploy_profile_plugins(
+            source_profile=repo_root / "profiles" / profile,
+            target_profile=target,
+            timestamp=timestamp,
+        )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -445,7 +527,7 @@ def main(argv: list[str] | None = None) -> int:
                 env={**os.environ, "HERMES_HOME": str(hermes_home)},
             )
             print("Gateway Hermes redémarré.")
-    except (OSError, subprocess.CalledProcessError) as exc:
+    except (ConfigurationError, OSError, subprocess.CalledProcessError) as exc:
         print(f"Échec de l’application : {exc}", file=sys.stderr)
         return 1
     return 0

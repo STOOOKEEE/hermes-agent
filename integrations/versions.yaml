@@ -1,0 +1,16 @@
+version: 1
+
+# Les révisions sont volontairement figées. Une mise à jour doit passer par un
+# nouvel audit, les tests de ce dépôt et un commit explicite.
+agent_reach:
+  repository: https://github.com/Panniantong/Agent-Reach.git
+  commit: 1494c2ab239e7355a77e7cceaf3271453a1f34b5
+  version: 1.5.0
+
+twitter_cli:
+  package: twitter-cli
+  version: 0.8.5
+
+xactions:
+  repository: https://github.com/nirholas/XActions.git
+  commit: 3b343ed8c71d2dca328de5a8e48c354b86f6b671

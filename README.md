@@ -11,7 +11,7 @@ Configuration initiale prévue :
 
 | Salon | Profil Hermes | Mission |
 |---|---|---|
-| `#twitter` | `twitter` | Recherche, rédaction et gestion prudente du compte X/Twitter |
+| `#twitter` | `twitter` | Veille avec Agent Reach, rédaction et publication contrôlée via XActions |
 | `#crypto` | `crypto` | Surveillance en lecture seule de portefeuilles crypto |
 
 Hermes sait déjà faire ce routage nativement avec `gateway.multiplex_profiles` et
@@ -20,7 +20,7 @@ Hermes sait déjà faire ce routage nativement avec `gateway.multiplex_profiles`
 ## Sécurité
 
 - Le token Discord et les identifiants autorisés restent dans `~/.hermes/.env`.
-- Les cookies ou tokens X/Twitter restent dans le secret store ou le profil `twitter`.
+- Les cookies X/Twitter restent dans `~/.agent-reach/config.yaml` en mode `600`.
 - Les adresses publiques à surveiller restent dans
   `~/.hermes/profiles/crypto/WALLETS.md`.
 - Une seed phrase, une clé privée ou un fichier de wallet ne doit jamais être donné à
@@ -30,6 +30,69 @@ Hermes sait déjà faire ce routage nativement avec `gateway.multiplex_profiles`
 - Le profil `crypto` est strictement en lecture seule et ne signe aucune transaction.
 
 Voir aussi [SECURITY.md](SECURITY.md).
+
+## Intégration X : Agent Reach + XActions
+
+Les deux projets ont des rôles distincts :
+
+- [`Panniantong/Agent-Reach`](https://github.com/Panniantong/Agent-Reach) route
+  les recherches et lectures vers `twitter-cli` ;
+- [`nirholas/XActions`](https://github.com/nirholas/XActions) sert uniquement à
+  publier un nouveau post texte grâce au plugin Hermes versionné ici.
+
+Le MCP complet de XActions n’est volontairement pas exposé : sa surface comprend de
+nombreuses mutations qui ne sont pas nécessaires. Le plugin
+`xactions-publisher` enregistre seulement `xactions_post_tweet`, vérifie le compte
+connecté avant l’envoi et utilise le mécanisme d’approbation natif de Hermes. Le texte
+exact apparaît dans la demande d’approbation ; un refus, une expiration ou une erreur
+du portail d’approbation bloque l’action.
+
+Les révisions auditées sont figées dans
+[`integrations/versions.yaml`](integrations/versions.yaml). XActions est exécuté
+directement depuis ses modules HTTP nécessaires : aucun `npm install` ni script npm
+du dépôt tiers n’est exécuté.
+
+### Installer les dépendances sociales
+
+Le script annonce son plan sans rien modifier :
+
+```bash
+python3 scripts/install_social_tools.py
+python3 scripts/install_social_tools.py --apply
+```
+
+Il crée un environnement Python privé dans
+`~/.local/share/hermes-social/agent-reach-venv`, installe Agent Reach et
+`twitter-cli` aux versions figées, puis place XActions au commit audité. La commande
+publique `twitter` est une façade en lecture seule ; les commandes `post`, `reply`,
+`like`, `follow`, etc. sont refusées.
+
+### Configurer X sans transmettre de cookie au bot
+
+Se connecter en SSH au serveur, puis saisir les cookies directement dans ce terminal
+(jamais dans Discord, une issue ou un commit) :
+
+```bash
+agent-reach configure twitter-cookies AUTH_TOKEN CT0
+chmod 600 ~/.agent-reach/config.yaml
+agent-reach doctor --json
+twitter status
+```
+
+Définir aussi le compte attendu dans le fichier privé du profil :
+
+```dotenv
+# ~/.hermes/profiles/twitter/.env
+XACTIONS_EXPECTED_USERNAME=nom_sans_arobase
+```
+
+Cette valeur n’est pas secrète, mais elle est obligatoire : XActions interroge X avant
+chaque publication et refuse si les cookies correspondent à un autre compte.
+
+Sur un VPS, rester très conservateur sur la fréquence. Les appels automatisés par
+cookie et les IP de datacenter peuvent déclencher les protections de X. Un compte
+secondaire dédié et, si nécessaire, un proxy résidentiel configuré côté serveur sont
+préférables au compte personnel principal.
 
 ## 1. Préparer Discord
 
@@ -99,6 +162,10 @@ Lors du premier passage, le script crée les profils avec `hermes profile create
 mettre leurs secrets dans Git. Avant chaque écriture, une sauvegarde horodatée est
 créée à côté du fichier concerné.
 
+Le même passage déploie les plugins présents dans `profiles/<profil>/plugins/` et les
+ajoute à l’allowlist `plugins.enabled` du profil concerné. Ainsi,
+`xactions-publisher` n’existe que dans le profil `twitter`, jamais dans `crypto`.
+
 Le redémarrage refuse de s’exécuter si `DISCORD_BOT_TOKEN` ou
 `DISCORD_ALLOWED_USERS` est absent de l’environnement et de `~/.hermes/.env`.
 
@@ -129,6 +196,7 @@ mode conversation directe.
 
 ```bash
 python3 -m unittest discover -s tests -v
+python3 scripts/install_social_tools.py
 python3 scripts/configure_discord.py \
   --manifest config/discord-channels.example.yaml \
   --check-template

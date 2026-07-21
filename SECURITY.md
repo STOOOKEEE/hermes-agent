@@ -19,11 +19,29 @@ sa révocation immédiate, puis sa rotation sur le serveur.
 
 - `twitter` peut rechercher et préparer librement, mais toute publication,
   suppression, réponse ou DM demande une approbation humaine sur le contenu exact.
+- Agent Reach est limité à la lecture dans ce déploiement. Sa commande `twitter` est
+  une façade à allowlist ; les sous-commandes mutantes de `twitter-cli` sont refusées.
+- XActions n’est pas exposé comme MCP général. Seul `xactions_post_tweet` est chargé
+  dans le profil `twitter`, avec approbation Hermes obligatoire et vérification du nom
+  de compte avant publication.
+- Les cookies X vivent uniquement dans `~/.agent-reach/config.yaml` en mode `600` et
+  sont transmis au sous-processus XActions par environnement, jamais comme argument de
+  commande ni résultat d’outil.
+- Les versions d’Agent Reach, twitter-cli et XActions restent figées. Toute mise à jour
+  exige un nouvel audit et les tests du dépôt.
 - `crypto` peut lire des données publiques et produire des alertes. Il ne doit jamais
   signer, transférer, swapper, trader, approuver un contrat ou modifier une allowance.
 - Les salons Discord autorisés sont allowlistés. Le bot ne doit pas être ouvert à tous
   les utilisateurs.
 - Chaque profil reçoit uniquement les secrets et outils nécessaires à sa mission.
+
+## Risque résiduel X
+
+Agent Reach, twitter-cli et XActions utilisent des interfaces web et des cookies de
+session, pas l’API X officielle. X peut modifier ces interfaces sans préavis, limiter
+une session ou suspendre un compte. Maintenir un faible volume, éviter les campagnes
+automatisées et privilégier un compte dédié. Une approbation humaine réduit les
+erreurs de contenu mais ne supprime pas le risque de plateforme.
 
 ## Signalement
 

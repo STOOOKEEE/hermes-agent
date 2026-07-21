@@ -8,6 +8,8 @@ from unittest.mock import patch
 from scripts.configure_discord import (
     ConfigurationError,
     _create_or_update_profiles,
+    _deploy_profile_plugins,
+    _enable_profile_plugins,
     _env_has_value,
     _write_yaml_atomic,
     render_config,
@@ -184,6 +186,37 @@ class ConfigureDiscordTests(unittest.TestCase):
                 encoding="utf-8"
             ),
         )
+
+    def test_profile_plugin_is_deployed_and_enabled(self) -> None:
+        source = self.repo / "profiles" / "twitter"
+        plugin = source / "plugins" / "publisher"
+        plugin.mkdir(parents=True)
+        (plugin / "plugin.yaml").write_text("name: publisher\n", encoding="utf-8")
+        (plugin / "__init__.py").write_text("def register(ctx): pass\n", encoding="utf-8")
+
+        target = self.repo / "hermes-home" / "profiles" / "twitter"
+        target.mkdir(parents=True)
+        (target / "config.yaml").write_text(
+            "plugins:\n  enabled:\n    - existing\n",
+            encoding="utf-8",
+        )
+
+        _deploy_profile_plugins(
+            source_profile=source,
+            target_profile=target,
+            timestamp="20260101T000000Z",
+        )
+
+        deployed = target / "plugins" / "publisher"
+        self.assertTrue((deployed / "plugin.yaml").is_file())
+        rendered = __import__("yaml").safe_load(
+            (target / "config.yaml").read_text(encoding="utf-8")
+        )
+        self.assertEqual(["existing", "publisher"], rendered["plugins"]["enabled"])
+
+    def test_plugin_config_rejects_malformed_enabled_list(self) -> None:
+        with self.assertRaises(ConfigurationError):
+            _enable_profile_plugins({"plugins": {"enabled": "publisher"}}, ["publisher"])
 
 
 if __name__ == "__main__":
