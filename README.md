@@ -238,7 +238,9 @@ Les sauvegardes de plugins sont conservées dans `backups/plugins/`, hors du dos
 exécutable `plugins/`, afin que Hermes ne recharge jamais une ancienne version.
 Les variables `DISCORD_*` et `TELEGRAM_*` sont retirées des `.env` clonés : le gateway
 principal reste l’unique propriétaire des bots et route ensuite chaque salon vers son
-profil.
+profil. La plateforme `platforms.discord.enabled` est aussi forcée à `false` dans les
+profils routés : ils reçoivent les messages du listener principal sans ouvrir une
+seconde connexion Discord ni réclamer un second token.
 
 La liste optionnelle `toolsets` de chaque salon remplace, pour Discord seulement, la
 surface d’outils héritée par son profil. Le profil Twitter exclut ainsi le terminal et

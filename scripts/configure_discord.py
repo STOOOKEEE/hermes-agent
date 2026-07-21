@@ -429,6 +429,31 @@ def _set_profile_discord_toolsets(
     return result
 
 
+def _disable_profile_inbound_platforms(
+    config: dict[str, Any], platform_names: tuple[str, ...] = ("discord",)
+) -> dict[str, Any]:
+    """Empêche les profils routés d'ouvrir un second listener avec le même bot.
+
+    En mode ``profile_routes``, le listener du profil principal reçoit le message
+    puis en choisit le profil cible. Un profil secondaire cloné hérite pourtant de
+    la plateforme Discord ; sans désactivation explicite, les versions récentes de
+    Hermes tentent une seconde connexion et réclament un autre token.
+    """
+
+    result = copy.deepcopy(config)
+    platforms = result.setdefault("platforms", {})
+    if not isinstance(platforms, dict):
+        raise ConfigurationError("platforms existe déjà mais n’est pas un objet YAML")
+    for name in platform_names:
+        platform = platforms.setdefault(name, {})
+        if not isinstance(platform, dict):
+            raise ConfigurationError(
+                f"platforms.{name} existe déjà mais n’est pas un objet YAML"
+            )
+        platform["enabled"] = False
+    return result
+
+
 def _relocate_scannable_plugin_backups(target_plugins: Path) -> None:
     """Sort les sauvegardes du dossier que le chargeur Hermes exécute."""
 
@@ -519,8 +544,6 @@ def _deploy_profile_plugins(
     discord_toolsets: list[str] | None = None,
 ) -> None:
     names = _profile_plugin_names(source_profile)
-    if not names and discord_toolsets is None:
-        return
 
     if names:
         target_plugins = target_profile / "plugins"
@@ -558,6 +581,7 @@ def _deploy_profile_plugins(
     current = _load_yaml(config_path) if config_path.exists() else {}
     rendered = _enable_profile_plugins(current, names)
     rendered = _set_profile_discord_toolsets(rendered, discord_toolsets)
+    rendered = _disable_profile_inbound_platforms(rendered)
     backup = _backup(config_path, timestamp)
     if backup:
         print(f"Sauvegarde : {backup}")

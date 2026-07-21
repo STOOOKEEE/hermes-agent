@@ -12,6 +12,7 @@ from scripts.configure_discord import (
     _create_or_update_profiles,
     _deploy_multiplex_runtime_plugins,
     _deploy_profile_plugins,
+    _disable_profile_inbound_platforms,
     _enable_profile_plugins,
     _env_has_value,
     _strip_profile_gateway_credentials,
@@ -357,6 +358,19 @@ class ConfigureDiscordTests(unittest.TestCase):
             rendered["platform_toolsets"]["discord"],
         )
         self.assertEqual(["terminal"], rendered["platform_toolsets"]["cli"])
+
+    def test_routed_profile_cannot_open_a_second_discord_listener(self) -> None:
+        rendered = _disable_profile_inbound_platforms(
+            {
+                "platforms": {
+                    "discord": {"enabled": True, "extra": {"reactions": True}},
+                    "telegram": {"enabled": True},
+                }
+            }
+        )
+        self.assertFalse(rendered["platforms"]["discord"]["enabled"])
+        self.assertTrue(rendered["platforms"]["discord"]["extra"]["reactions"])
+        self.assertTrue(rendered["platforms"]["telegram"]["enabled"])
 
     def test_profile_transport_tokens_are_removed_but_provider_keys_remain(self) -> None:
         env_path = self.repo / "profile.env"
