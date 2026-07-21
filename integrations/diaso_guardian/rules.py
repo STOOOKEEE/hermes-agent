@@ -44,7 +44,7 @@ _COMMAND_RESPONSE_RE = re.compile(
     r"^\s*🟢\s+Already\s+running\b|^\s*<b>Commandes</b>",
     re.I | re.S,
 )
-_LENDING_MATCH_RE = re.compile(r"\b(?:MATCHED|RENEGOTIATED|REFI)\b", re.I)
+_LENDING_MATCH_RE = re.compile(r"\b(?:MATCHED|RENEGOTIATED)\b", re.I)
 _LENDING_STALE_RE = re.compile(r"\bSTALE\s+PRICE\b|\bPRICE\s+STALE\b", re.I)
 _LENDING_RPC_RE = re.compile(
     r"\bRPC(?:[\s_-]+(?:ERROR|FAIL(?:ED|URE)?|DOWN|UNAVAILABLE))\b|"

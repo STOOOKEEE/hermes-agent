@@ -86,6 +86,14 @@ class RiskRulesTests(unittest.TestCase):
         )
         self.assertEqual("pause", decision.action)
 
+    def test_refinance_out_is_not_misclassified_as_new_loan(self) -> None:
+        decision = RiskEngine().evaluate(
+            "lending",
+            "↻ REFI gondi | terraforms | 0.1 WETH → +0.001 ETH",
+            now=1,
+        )
+        self.assertEqual("none", decision.action)
+
     def test_lending_explicit_high_ltv_panics(self) -> None:
         decision = RiskEngine().evaluate("lending", "RISK ALERT LTV: 104%", now=1)
         self.assertEqual("panic", decision.action)
