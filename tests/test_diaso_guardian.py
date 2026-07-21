@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -130,6 +131,41 @@ class DiasoConfigurationTests(unittest.TestCase):
         self.assertIn("DIASO_GUARDIAN_ARMED=true", rendered)
         self.assertIn("DIASO_MM_GROUP_ID=-5500138739", rendered)
         self.assertEqual(1, rendered.count("DIASO_MM_GROUP_ID="))
+
+    def test_activate_forces_restart_after_environment_change(self) -> None:
+        from scripts.configure_diaso_guardian import configure
+
+        with tempfile.TemporaryDirectory() as raw_tmp:
+            tmp = Path(raw_tmp)
+            env_path = tmp / ".env"
+            env_path.write_text(
+                "TELEGRAM_API_ID=123\nTELEGRAM_API_HASH=hash\n", encoding="utf-8"
+            )
+            (tmp / "hermes_session.session").write_text("session", encoding="utf-8")
+            (tmp / "hermes_session.session").chmod(0o600)
+            hermes_env = tmp / "hermes.env"
+            hermes_env.write_text("DISCORD_BOT_TOKEN=token\n", encoding="utf-8")
+            unit_source = tmp / "source.service"
+            unit_source.write_text("[Service]\n", encoding="utf-8")
+            calls: list[list[str]] = []
+
+            with patch(
+                "scripts.configure_diaso_guardian.subprocess.run",
+                side_effect=lambda command, **_: calls.append(command),
+            ):
+                configure(
+                    env_path=env_path,
+                    hermes_env=hermes_env,
+                    unit_source=unit_source,
+                    unit_target=tmp / "target.service",
+                    armed=True,
+                    apply=True,
+                    activate=True,
+                )
+
+        self.assertIn(
+            ["systemctl", "--user", "restart", "diaso-guardian.service"], calls
+        )
 
 
 if __name__ == "__main__":

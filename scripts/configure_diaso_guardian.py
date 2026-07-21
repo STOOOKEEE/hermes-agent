@@ -143,7 +143,11 @@ def configure(
         )
         subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
         subprocess.run(
-            ["systemctl", "--user", "enable", "--now", "diaso-guardian.service"],
+            ["systemctl", "--user", "enable", "diaso-guardian.service"],
+            check=True,
+        )
+        subprocess.run(
+            ["systemctl", "--user", "restart", "diaso-guardian.service"],
             check=True,
         )
         print("Service diaso-guardian activé ; ancien lending-ear désactivé")
