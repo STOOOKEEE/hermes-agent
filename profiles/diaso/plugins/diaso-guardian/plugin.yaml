@@ -5,7 +5,6 @@ author: STOOOKEEE
 kind: standalone
 multiplex_global: true
 provides_tools:
-  - diaso_status
   - diaso_pause
   - diaso_panic
 hooks:

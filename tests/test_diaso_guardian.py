@@ -98,9 +98,14 @@ class RiskRulesTests(unittest.TestCase):
 class DiasoPluginTests(unittest.TestCase):
     def test_only_bounded_operations_exist(self) -> None:
         self.assertEqual(
-            {"diaso_status", "diaso_pause", "diaso_panic"}, PLUGIN.TOOL_NAMES
+            {"diaso_pause", "diaso_panic"}, PLUGIN.TOOL_NAMES
         )
         self.assertNotIn("resume", " ".join(PLUGIN.TOOL_NAMES))
+        self.assertNotIn("status", " ".join(PLUGIN.TOOL_NAMES))
+
+    def test_guardian_never_sends_status(self) -> None:
+        source = (RULES_DIR / "guardian.py").read_text(encoding="utf-8")
+        self.assertNotIn('"/status"', source)
 
     def test_reason_must_be_single_line(self) -> None:
         with self.assertRaises(ValueError):

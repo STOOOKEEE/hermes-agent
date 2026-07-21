@@ -1,8 +1,8 @@
 # Diaso Guardian
 
 Ce service lit les alertes Telegram déjà émises par les bots de production et publie
-les décisions dans le salon Discord Diaso. Son API locale n'accepte que trois
-opérations : `status`, `pause` et `panic`. Il n'existe aucune route `resume`.
+les décisions dans le salon Discord Diaso. Son API locale n'accepte que deux
+opérations : `pause` et `panic`. Il n'existe aucune route `status` ou `resume`.
 
 ## Variables privées
 
@@ -20,6 +20,6 @@ DIASO_GUARDIAN_ARMED=false
 Le token Discord reste dans `~/.hermes/.env`. La session Telethon existante reste dans
 `~/telethon-listener/hermes_session.session`.
 
-Toujours démarrer en simulation, exécuter les tests puis vérifier les deux `/status`.
-L'armement ne doit passer à `true` qu'après ce smoke test. Un arrêt automatique est
+Toujours démarrer en simulation et exécuter les tests sans envoyer de `/status` aux
+bots. L'armement ne doit passer à `true` qu'après ce smoke test. Un arrêt automatique est
 sticky : seul l'opérateur humain peut envoyer `/resume` directement au bot concerné.

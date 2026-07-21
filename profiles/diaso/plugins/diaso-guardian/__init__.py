@@ -9,29 +9,12 @@ from pathlib import Path
 from typing import Any
 
 
-STATUS_TOOL = "diaso_status"
 PAUSE_TOOL = "diaso_pause"
 PANIC_TOOL = "diaso_panic"
-TOOL_NAMES = {STATUS_TOOL, PAUSE_TOOL, PANIC_TOOL}
+TOOL_NAMES = {PAUSE_TOOL, PANIC_TOOL}
 ALLOWED_BOTS = {"lending", "market_maker"}
 MAX_REASON_LENGTH = 300
 SOCKET_TIMEOUT = 90
-
-STATUS_SCHEMA = {
-    "name": STATUS_TOOL,
-    "description": "Lit l'état frais du bot NFT lending, market making ou des deux.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "bot": {
-                "type": "string",
-                "enum": ["all", "lending", "market_maker"],
-            }
-        },
-        "required": ["bot"],
-        "additionalProperties": False,
-    },
-}
 
 PAUSE_SCHEMA = {
     "name": PAUSE_TOOL,
@@ -97,10 +80,6 @@ def _validate(tool_name: str, args: Any) -> dict[str, str]:
     if not isinstance(args, dict):
         raise ValueError("les arguments doivent être un objet")
     bot = str(args.get("bot") or "")
-    if tool_name == STATUS_TOOL:
-        if bot not in ALLOWED_BOTS | {"all"}:
-            raise ValueError("bot invalide")
-        return {"bot": bot, "reason": "lecture demandée depuis Discord"}
     if bot not in ALLOWED_BOTS:
         raise ValueError("bot invalide")
     reason = str(args.get("reason") or "").strip()
@@ -167,7 +146,6 @@ def _handle(tool_name: str, args: Any) -> str:
     except ValueError as exc:
         return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
     operation = {
-        STATUS_TOOL: "status",
         PAUSE_TOOL: "pause",
         PANIC_TOOL: "panic",
     }[tool_name]
@@ -190,7 +168,6 @@ def _approval_hook(tool_name: str = "", args: Any = None, **_: Any) -> dict[str,
 
 def register(ctx) -> None:
     for schema, emoji in (
-        (STATUS_SCHEMA, "📊"),
         (PAUSE_SCHEMA, "⏸️"),
         (PANIC_SCHEMA, "🛑"),
     ):

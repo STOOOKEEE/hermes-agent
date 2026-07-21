@@ -6,7 +6,6 @@ infrastructure ou leurs credentials au modèle.
 Le plugin parle uniquement au socket Unix `diaso-guardian.sock` du service local. Il
 ne connaît ni token Telegram, ni clé de wallet, ni commande arbitraire. Outils exposés :
 
-- `diaso_status`
 - `diaso_pause`
 - `diaso_panic`
 

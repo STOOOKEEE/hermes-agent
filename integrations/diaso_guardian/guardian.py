@@ -267,22 +267,6 @@ class Guardian:
         finally:
             self._waiters[bot] = [entry for entry in self._waiters[bot] if entry[1] is not future]
 
-    async def _status(self, bot: BotName) -> dict[str, Any]:
-        try:
-            response = await self._send_and_wait(
-                bot,
-                "/status",
-                r"STATUS|PAUSED|RUNNING|wallet|active loans|orders|PnL|inventaire|deployed",
-            )
-            return {
-                "ok": True,
-                "bot": bot,
-                "paused": bool(re.search(r"\bPAUSED\b|\bPANIC\b", response, re.I)),
-                "status": _safe_excerpt(response, 1_500),
-            }
-        except asyncio.TimeoutError:
-            return {"ok": False, "bot": bot, "error": "aucune réponse au /status en 25 s"}
-
     async def execute(
         self,
         bot: BotName,
@@ -291,16 +275,14 @@ class Guardian:
         *,
         automatic: bool,
     ) -> dict[str, Any]:
-        if operation not in {"status", "pause", "panic"}:
+        if operation not in {"pause", "panic"}:
             return {"ok": False, "error": "opération interdite"}
         if bot not in self.config.bots:
             return {"ok": False, "error": "bot inconnu"}
         clean_reason = re.sub(r"[\r\n]+", " ", reason).strip()[:MAX_REASON_LENGTH]
 
         async with self._bot_locks[bot]:
-            if operation == "status":
-                result = await self._status(bot)
-            elif not self.config.armed:
+            if not self.config.armed:
                 result = {
                     "ok": False,
                     "bot": bot,
@@ -324,23 +306,23 @@ class Guardian:
                             timeout=45,
                         )
                         responses.append(_safe_excerpt(panic_response))
-                    status = await self._status(bot)
                     failed_ack = any(
                         re.search(r"❌|[ÉE]CHOU[ÉE]|FAILED|TOUJOURS ACTIF", response, re.I)
                         for response in responses
                     )
-                    verified_paused = bool(status.get("ok") and status.get("paused"))
                     result = {
-                        "ok": not failed_ack and verified_paused,
+                        "ok": not failed_ack,
                         "bot": bot,
                         "operation": operation,
                         "responses": responses,
-                        "verification": status,
+                        "verification": {
+                            "source": "command_ack",
+                            "confirmed": not failed_ack,
+                            "extra_command_sent": False,
+                        },
                     }
                     if failed_ack:
                         result["error"] = "au moins une étape du kill-switch a échoué"
-                    elif not verified_paused:
-                        result["error"] = "l'état PAUSED/PANIC n'a pas été vérifié"
                 except asyncio.TimeoutError:
                     result = {
                         "ok": False,
@@ -375,16 +357,7 @@ class Guardian:
             bot = str(payload.get("bot") or "")
             reason = str(payload.get("reason") or "action demandée depuis Discord")
 
-            if operation == "status" and bot == "all":
-                result = {
-                    "ok": True,
-                    "armed": self.config.armed,
-                    "bots": [
-                        await self.execute(name, "status", reason, automatic=False)
-                        for name in ("lending", "market_maker")
-                    ],
-                }
-            elif bot in self.config.bots:
+            if bot in self.config.bots:
                 result = await self.execute(bot, operation, reason, automatic=False)  # type: ignore[arg-type]
             else:
                 result = {"ok": False, "error": "bot invalide"}
