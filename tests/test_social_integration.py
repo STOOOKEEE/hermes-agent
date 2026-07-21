@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import yaml
@@ -216,6 +217,31 @@ class AgentReachReaderTests(unittest.TestCase):
                 "execute_code", {"code": "print(2 + 2)"}
             )
         self.assertIsNone(result)
+
+    def test_gateway_hook_stamps_missing_multiplex_profile(self) -> None:
+        source = SimpleNamespace(profile=None)
+        event = SimpleNamespace(source=source)
+        gateway = SimpleNamespace(
+            _profile_name_for_source=lambda candidate: (
+                "twitter" if candidate is source else None
+            )
+        )
+
+        result = self.plugin._stamp_multiplex_profile_route(
+            event=event, gateway=gateway
+        )
+
+        self.assertIsNone(result)
+        self.assertEqual("twitter", source.profile)
+
+    def test_gateway_hook_preserves_existing_profile(self) -> None:
+        source = SimpleNamespace(profile="crypto")
+        event = SimpleNamespace(source=source)
+        gateway = SimpleNamespace(_profile_name_for_source=lambda _: "twitter")
+
+        self.plugin._stamp_multiplex_profile_route(event=event, gateway=gateway)
+
+        self.assertEqual("crypto", source.profile)
 
     def test_status_keeps_cookies_out_of_process_arguments(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

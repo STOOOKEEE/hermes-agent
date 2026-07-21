@@ -200,6 +200,9 @@ La liste optionnelle `toolsets` de chaque salon remplace, pour Discord seulement
 surface d’outils héritée par son profil. Le profil Twitter exclut ainsi le terminal et
 `execute_code` : les noms `x_...` sont nécessairement appelés comme outils structurés,
 et les intégrations globales MCP sont désactivées dans ce salon avec `no_mcp`.
+Le plugin réapplique également la route multiplexée avant les commandes slash : `/new`
+et `/reset` réinitialisent donc la session du salon (`agent:twitter` ou `agent:crypto`),
+pas la session générale `agent:main`.
 
 Le redémarrage refuse de s’exécuter si `DISCORD_BOT_TOKEN` ou
 `DISCORD_ALLOWED_USERS` est absent de l’environnement et de `~/.hermes/.env`.

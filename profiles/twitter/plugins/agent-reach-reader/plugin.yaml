@@ -13,3 +13,4 @@ provides_tools:
   - x_home_feed
 hooks:
   - pre_tool_call
+  - pre_gateway_dispatch

@@ -441,6 +441,32 @@ def _structured_tool_routing_hook(
     return None
 
 
+def _stamp_multiplex_profile_route(
+    event: Any = None,
+    gateway: Any = None,
+    **_: Any,
+) -> None:
+    """Rétablit la route de profil oubliée par certaines commandes slash.
+
+    Les messages Discord ordinaires passent ``guild_id`` à ``build_source`` et
+    reçoivent leur profil immédiatement. Certaines commandes slash construites
+    par l'adaptateur omettent cet identifiant ; leur source reste alors dans
+    ``agent:main``. Ce hook s'exécute avant le calcul de la clé de session et
+    réutilise le routeur officiel du gateway.
+    """
+
+    source = getattr(event, "source", None)
+    if source is None or getattr(source, "profile", None):
+        return None
+    resolver = getattr(gateway, "_profile_name_for_source", None)
+    if not callable(resolver):
+        return None
+    profile = resolver(source)
+    if profile:
+        source.profile = profile
+    return None
+
+
 def register(ctx) -> None:
     tools = (
         (STATUS_SCHEMA, _handle_status),
@@ -460,3 +486,4 @@ def register(ctx) -> None:
             emoji="🔎",
         )
     ctx.register_hook("pre_tool_call", _structured_tool_routing_hook)
+    ctx.register_hook("pre_gateway_dispatch", _stamp_multiplex_profile_route)
