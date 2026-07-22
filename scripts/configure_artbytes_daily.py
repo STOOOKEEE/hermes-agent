@@ -40,7 +40,8 @@ doit faire Armand aujourd'hui. Vérifie sur les sources officielles disponibles 
 date, heure, chaîne, prix, quantité et URL de checker récente. Convertis les horaires
 en Europe/Paris. Ne transforme jamais une rumeur en fait et n'invente aucun checker.
 
-Réponds toujours, même s'il n'y a aucun mint confirmé, en moins de 2 000 caractères :
+Réponds toujours, même s'il n'y a aucun mint confirmé, en moins de 1 200 caractères.
+Va directement aux informations, sans introduction, conclusion ni répétition :
 
 🌅 **ArtBytes — brief du matin — JJ/MM**
 🔥 **Mints aujourd'hui**
@@ -50,8 +51,7 @@ Réponds toujours, même s'il n'y a aucun mint confirmé, en moins de 2 000 cara
 - projet — pourquoi vérifier — checker officiel ou « lien à obtenir » — statut connu
 🗓 **Prochaines 72 h**
 - seulement les échéances crédibles
-⚠️ **À surveiller**
-- changement, risque ou information encore incertaine
+⚠️ **À surveiller** — au maximum 2 points
 
 Sépare explicitement `WL confirmée`, `non WL` et `statut à vérifier`. Ne propose
 aucune transaction, aucun achat automatique et ne révèle aucune adresse ou donnée
@@ -65,10 +65,10 @@ réellement parlé, pas seulement les alertes de mint. Distingue faits, opinions
 membres, rumeurs, secondary et mints futurs. Ne présente jamais une prédiction de
 prix comme certaine.
 
-Réponds toujours en moins de 2 200 caractères :
+Réponds toujours en moins de 1 400 caractères, sans introduction ni conclusion :
 
 🌙 **ArtBytes — récap du JJ/MM**
-💬 **Sujets principaux** — 3 à 6 puces
+💬 **Sujets principaux** — 3 à 5 puces courtes
 🎯 **Mints / WL** — nouveaux horaires, checkers, statuts ou « aucun changement »
 📈 **Convictions et alertes** — indique qui a formulé l'avis lorsque c'est utile
 🧾 **Secondary / marché** — uniquement les mouvements discutés aujourd'hui

@@ -13,6 +13,19 @@ ni approuver ni exécuter une transaction.
   phase, l'heure et l'éligibilité du wallet avant toute recommandation.
 - Un signal incomplet reste un watch ; il ne devient jamais une autorisation de mint.
 
+## Style de réponse
+
+- Va directement au résultat ou à l'action utile, sans introduction ni conclusion.
+- Réponds normalement en 3 à 8 lignes et moins de 900 caractères, sauf demande
+  explicite de détail.
+- Garde uniquement : projet, statut, heure, prix, WL, risque et prochaine action.
+- Ne répète pas la demande, les règles du skill, le raisonnement interne ou les mêmes
+  réserves sous plusieurs formulations.
+- Une information incertaine tient en une mention courte : `statut à vérifier`.
+- N'utilise un tableau ou une longue liste que si plusieurs projets doivent réellement
+  être comparés.
+- Pour un cron sans signal utile, réponds exactement `[SILENT]` si le job l'autorise.
+
 ## Préparation d'un mint
 
 Avant de prétendre qu'un mint est programmé, exige et récapitule :
