@@ -13,6 +13,7 @@ Configuration initiale prévue :
 |---|---|---|
 | `#général` | `default` | Conversation générale avec le profil Hermes principal |
 | `#twitter` | `twitter` | Veille avec Agent Reach, rédaction et publication contrôlée via XActions |
+| `#artbytes` | `artbytes` | Veille Artbytes, qualification des mints et préparation des ordres |
 | `#crypto` | `crypto` | Surveillance en lecture seule de portefeuilles crypto |
 | `#obsidian` | `obsidian` | Lecture, recherche et édition du vault privé, avec synchronisation Git approuvée |
 
@@ -31,6 +32,9 @@ Hermes sait déjà faire ce routage nativement avec `gateway.multiplex_profiles`
   replies, likes et follows unitaires demandés dans `#x` n'ajoutent pas de seconde
   validation ; les suppressions et messages privés restent indisponibles.
 - Le profil `crypto` est strictement en lecture seule et ne signe aucune transaction.
+- Le profil `artbytes` reste en lecture seule tant que l'engine de mint n'est pas
+  configuré et armé. Il ne demande jamais de clé privée dans Discord et ne confond
+  jamais la programmation d'un ordre avec l'approbation d'une transaction.
 
 Voir aussi [SECURITY.md](SECURITY.md).
 

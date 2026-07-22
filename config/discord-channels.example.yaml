@@ -32,6 +32,23 @@ discord:
         - clarify
         - no_mcp
 
+    - name: artbytes
+      channel_id: "REPLACE_WITH_ARTBYTES_CHANNEL_ID"
+      profile: artbytes
+      description: "Veille Artbytes, qualification des mints et préparation contrôlée des ordres."
+      respond_without_mention: true
+      use_threads: false
+      toolsets:
+        - web
+        - browser
+        - vision
+        - memory
+        - skills
+        - todo
+        - session_search
+        - clarify
+        - no_mcp
+
     - name: crypto
       channel_id: "REPLACE_WITH_CRYPTO_CHANNEL_ID"
       profile: crypto
