@@ -1,6 +1,8 @@
 # Secrets and local operator configuration
 .env
 .env.*
+!.env.example
+!**/.env.example
 config/discord-channels.yaml
 **/WALLETS.md
 **/credentials.*

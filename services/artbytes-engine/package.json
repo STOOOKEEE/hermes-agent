@@ -1,0 +1,35 @@
+{
+  "name": "artbytes-engine",
+  "version": "0.1.0",
+  "description": "Onchain bot that executes ArtBytes NFT mints (SeaDrop) under a hard budget cap + human approval, then manages the exit. Hermes decides, the engine executes.",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "engine": "node dist/control/cli.js",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "pretest": "rm -f data/.test-db-* 2>/dev/null || true",
+    "test": "node --import tsx --test --test-reporter=spec tests/*.test.ts",
+    "posttest": "rm -f data/.test-db-* 2>/dev/null || true"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "grammy": "^1.30.0",
+    "pino": "^9.5.0",
+    "pino-pretty": "^11.3.0",
+    "viem": "^2.48.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.7.4",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}

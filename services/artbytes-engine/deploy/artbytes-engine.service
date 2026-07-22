@@ -1,0 +1,22 @@
+[Unit]
+Description=Artbytes scheduled mint engine
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hermes/dev/NFT/artbytes-engine
+Environment=NODE_ENV=production
+EnvironmentFile=/home/hermes/dev/NFT/artbytes-engine/.env
+ExecStart=/usr/bin/node /home/hermes/dev/NFT/artbytes-engine/dist/index.js
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/hermes/dev/NFT/artbytes-engine/data
+
+[Install]
+WantedBy=default.target
