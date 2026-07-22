@@ -88,10 +88,23 @@ export async function buildDropMintTransaction(
   minter: `0x${string}`,
   quantity: number,
 ): Promise<OpenSeaMintAction> {
-  const res = await client.post(`/drops/${encodeURIComponent(slug)}/mint`, {
-    minter,
-    quantity,
-  });
+  let res;
+  try {
+    res = await client.post(`/drops/${encodeURIComponent(slug)}/mint`, {
+      minter,
+      quantity,
+    });
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status ?? 'network';
+      const retryAfter = err.response?.headers?.['retry-after'];
+      const detail = JSON.stringify(err.response?.data ?? err.message).slice(0, 800);
+      throw new Error(
+        `OpenSea HTTP ${status}${retryAfter ? ` (retry-after ${retryAfter}s)` : ''}: ${detail}`,
+      );
+    }
+    throw err;
+  }
   const data = res.data as {
     target?: string;
     to?: string;
